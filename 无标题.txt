@@ -1,0 +1,6 @@
+"TABLE_NAME"	"COLUMN_NAME"	"CONSTRAINT_NAME"	"REFERENCED_TABLE_NAME"	"REFERENCED_COLUMN_NAME"
+"searchhistory"	"user_id"	"searchhistory_ibfk_1"	"old_user"	"user_id"
+"browsinghistory"	"user_id"	"browsinghistory_ibfk_1"	"old_user"	"user_id"
+"favorites"	"user_id"	"favorites_ibfk_1"	"old_user"	"user_id"
+"reminders"	"user_id"	"reminders_ibfk_1"	"old_user"	"user_id"
+"activityparticipants"	"user_id"	"activityparticipants_ibfk_1"	"old_user"	"user_id"
