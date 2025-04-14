@@ -1,0 +1,47 @@
+meta {
+  name: 活动报名
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/activities/join
+  body: json
+}
+
+body:json {
+  {
+    "activity_id": "123456",
+    "user_name": "张三",
+    "user_phone": "13800138000",
+    "student_id": "2021001001",
+    "timestamp": "{{$timestamp}}"
+  }
+}
+
+vars:pre-request {
+  timestamp: Math.floor(Date.now() / 1000).toString()
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(response.status).to.equal(200);
+  });
+  
+  test("Response has correct structure", function() {
+    expect(response.body).to.have.property('code').equals(0);
+    expect(response.body).to.have.property('message');
+    expect(response.body).to.have.property('data');
+  });
+  
+  test("Join activity response is correct", function() {
+    expect(response.body.data).to.have.property('registration_id');
+    expect(response.body.data).to.have.property('registration_time');
+    expect(response.body.data).to.have.property('status').equals('registered');
+  });
+} 

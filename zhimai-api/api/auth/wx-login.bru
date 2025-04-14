@@ -1,0 +1,106 @@
+meta {
+  name: 微信小程序登录
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/auth/wx-login
+  body: json
+}
+
+# 测试说明：
+# 1. code 获取方式：
+#   - 方式一：使用微信开发者工具，点击"编译"，在调试器Console中搜索 wx.login 可以看到 code
+#   - 方式二：使用下方的模拟测试 code（仅开发环境）
+# 2. 测试 code 说明：
+#   - test_code_1: 模拟新用户首次登录
+#   - test_code_2: 模拟已注册用户登录
+#   - test_code_3: 模拟登录失败情况
+
+body:json {
+  {
+    // 正式环境 code
+    "code": "wx_code_from_client",
+
+    // 开发环境测试 code（解开注释使用）
+     "code": "test_code_1",  // 新用户测试
+    // "code": "test_code_2",  // 已注册用户测试
+    // "code": "test_code_3"   // 登录失败测试
+  }
+}
+
+headers {
+  Content-Type: application/json
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(response.status).to.equal(200);
+  });
+  
+  test("Response has correct structure", function() {
+    expect(response.body).to.have.property('code');
+    expect(response.body).to.have.property('message');
+    expect(response.body).to.have.property('data');
+  });
+  
+  test("Login response contains token", function() {
+    // 成功场景测试
+    if(response.body.code === 0) {
+      expect(response.body.data).to.have.property('token');
+      expect(response.body.data).to.have.property('userInfo');
+      expect(response.body.data.userInfo).to.have.property('openid');
+    }
+    // 失败场景测试
+    else {
+      expect(response.body.code).to.not.equal(0);
+      expect(response.body.message).to.be.a('string');
+    }
+  });
+}
+
+docs {
+  # 微信登录接口说明
+  
+  ## 开发环境测试方法
+  
+  1. 使用微信开发者工具获取真实 code:
+     - 打开微信开发者工具
+     - 点击"编译"按钮
+     - 打开调试器 Console 面板
+     - 搜索 "wx.login" 关键字
+     - 在日志中可以找到 code 值
+  
+  2. 使用模拟测试 code:
+     - test_code_1: 模拟新用户，返回新用户信息和token
+     - test_code_2: 模拟已注册用户，返回已存在用户信息和token
+     - test_code_3: 模拟登录失败，返回错误信息
+  
+  ## 返回数据示例
+  
+  成功响应:
+  ```json
+  {
+    "code": 0,
+    "message": "success",
+    "data": {
+      "token": "eyJhbGciOiJIUzI1NiIs...",
+      "userInfo": {
+        "openid": "oX5HY5XYZ...",
+        "nickname": "用户昵称",
+        "avatar": "头像URL"
+      }
+    }
+  }
+  ```
+  
+  失败响应:
+  ```json
+  {
+    "code": 40029,
+    "message": "code 无效",
+    "data": null
+  }
+  ```
+} 

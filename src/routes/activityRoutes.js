@@ -1,20 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const activityController = require('../controllers/activityController');
+const { verifyToken } = require('../middleware/authMiddleware');
 
-// 获取活动列表
-router.get('/activities', activityController.getActivities);
+// 所有路由都需要验证token
+router.use(verifyToken);
 
-// 获取单个活动详情
-router.get('/activities/:id', activityController.getActivityById);
-
-// 创建新活动
+// 活动管理路由
+router.get('/activities', activityController.getAllActivities);
 router.post('/activities', activityController.createActivity);
-
-// 更新活动信息
 router.put('/activities/:id', activityController.updateActivity);
-
-// 删除活动
 router.delete('/activities/:id', activityController.deleteActivity);
 
 module.exports = router;

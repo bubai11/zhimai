@@ -82,7 +82,7 @@ yarn start
 ## 项目结构
 
 ```
-src/
+service/
 ├── config/         # 配置文件
 ├── controllers/    # 控制器
 ├── models/        # 数据模型
