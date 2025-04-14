@@ -6,7 +6,7 @@
         "docs/*"
     ],
     "watch": [
-        "src/"
+        "service/"
     ],
     "ext": "js,json,env",
     "exec": "node src/app.js",

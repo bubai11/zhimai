@@ -1,124 +1,121 @@
-const { Activity } = require('../models/activity');
-const logger = require('../utils/logger');
+const activityService = require('../services/activityService');
 
-// 获取活动列表
-exports.getActivities = async (req, res) => {
-  try {
-    const { activity_type, credit_type, status } = req.query;
-    
-    // 构建查询条件
-    const where = {};
-    if (activity_type) {
-      where.activity_type = activity_type;
-    }
-    if (credit_type) {
-      where.credit_type = credit_type;
-    }
-    if (status) {
-      where.status = status;
-    }
-
-    // 查询活动列表
-    const activities = await Activity.findAll({
-      where,
-      order: [['created_at', 'DESC']]
-    });
-
-    logger.info('获取活动列表成功', { count: activities.length });
-    res.json(activities);
-  } catch (error) {
-    logger.error('获取活动列表失败', { error: error.message });
-    res.status(500).json({
-      error: '获取活动列表失败',
-      message: error.message
-    });
-  }
-};
-
-// 获取单个活动详情
-exports.getActivityById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const activity = await Activity.findByPk(id);
-    
-    if (!activity) {
-      return res.status(404).json({
-        error: '活动不存在'
-      });
+class ActivityController {
+    /**
+     * 获取所有活动列表
+     * @param {Object} req 请求对象
+     * @param {Object} res 响应对象
+     */
+    async getAllActivities(req, res) {
+        try {
+            const activities = await activityService.getAllActivities();
+            res.json({
+                code: 200,
+                message: '获取活动列表成功',
+                data: activities
+            });
+        } catch (error) {
+            console.error('获取活动列表错误:', error);
+            res.status(500).json({
+                code: 500,
+                message: '服务器内部错误',
+                data: null
+            });
+        }
     }
 
-    res.json(activity);
-  } catch (error) {
-    logger.error('获取活动详情失败', { error: error.message, id: req.params.id });
-    res.status(500).json({
-      error: '获取活动详情失败',
-      message: error.message
-    });
-  }
-};
-
-// 创建新活动
-exports.createActivity = async (req, res) => {
-  try {
-    const activity = await Activity.create(req.body);
-    logger.info('创建活动成功', { activity_id: activity.activity_id });
-    res.status(201).json(activity);
-  } catch (error) {
-    logger.error('创建活动失败', { error: error.message });
-    res.status(500).json({
-      error: '创建活动失败',
-      message: error.message
-    });
-  }
-};
-
-// 更新活动信息
-exports.updateActivity = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const [updated] = await Activity.update(req.body, {
-      where: { activity_id: id }
-    });
-
-    if (updated) {
-      const updatedActivity = await Activity.findByPk(id);
-      logger.info('更新活动成功', { activity_id: id });
-      return res.json(updatedActivity);
+    /**
+     * 创建新活动
+     * @param {Object} req 请求对象
+     * @param {Object} res 响应对象
+     */
+    async createActivity(req, res) {
+        try {
+            const activityData = {
+                ...req.body,
+                createdBy: req.user.id
+            };
+            const activity = await activityService.createActivity(activityData);
+            res.json({
+                code: 200,
+                message: '创建活动成功',
+                data: activity
+            });
+        } catch (error) {
+            console.error('创建活动错误:', error);
+            res.status(500).json({
+                code: 500,
+                message: '服务器内部错误',
+                data: null
+            });
+        }
     }
 
-    return res.status(404).json({
-      error: '活动不存在'
-    });
-  } catch (error) {
-    logger.error('更新活动失败', { error: error.message, id: req.params.id });
-    res.status(500).json({
-      error: '更新活动失败',
-      message: error.message
-    });
-  }
-};
+    /**
+     * 更新活动信息
+     * @param {Object} req 请求对象
+     * @param {Object} res 响应对象
+     */
+    async updateActivity(req, res) {
+        try {
+            const { id } = req.params;
+            const result = await activityService.updateActivity(id, req.body);
+            
+            if (!result) {
+                return res.status(404).json({
+                    code: 404,
+                    message: '活动不存在',
+                    data: null
+                });
+            }
 
-// 删除活动
-exports.deleteActivity = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const deleted = await Activity.destroy({
-      where: { activity_id: id }
-    });
-
-    if (deleted) {
-      logger.info('删除活动成功', { activity_id: id });
-      return res.status(204).send();
+            res.json({
+                code: 200,
+                message: '更新活动成功',
+                data: result
+            });
+        } catch (error) {
+            console.error('更新活动错误:', error);
+            res.status(500).json({
+                code: 500,
+                message: '服务器内部错误',
+                data: null
+            });
+        }
     }
 
-    return res.status(404).json({
-      error: '活动不存在'
-    });
-  } catch (error) {
-    logger.error('删除活动失败', { error: error.message, id: req.params.id });
-    res.status(500).json({
-      error: '删除活动失败',
-      message: error.message
-    });
-  }
-};
+    /**
+     * 删除活动
+     * @param {Object} req 请求对象
+     * @param {Object} res 响应对象
+     */
+    async deleteActivity(req, res) {
+        try {
+            const { id } = req.params;
+            const result = await activityService.deleteActivity(id);
+
+            if (!result) {
+                return res.status(404).json({
+                    code: 404,
+                    message: '活动不存在',
+                    data: null
+                });
+            }
+
+            res.json({
+                code: 200,
+                message: '删除活动成功',
+                data: null
+            });
+        } catch (error) {
+            console.error('删除活动错误:', error);
+            res.status(500).json({
+                code: 500,
+                message: '服务器内部错误',
+                data: null
+            });
+        }
+    }
+}
+
+module.exports = new ActivityController();

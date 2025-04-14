@@ -1,120 +1,375 @@
-const jwt = require('jsonwebtoken'); // 用于生成 JWT token 的库
-// const crypto = require('crypto');
-const Tokens=require('../models/Tokens')
+const axios = require('axios');
+const jwt = require('jsonwebtoken');
+const { Op } = require('sequelize');
 const User = require('../models/User');
+const Tokens = require('../models/Tokens');
+const logger = require('../utils/logger');
+const config = require('../config');
 
+class UserService {
+    /**
+     * 微信登录
+     * @param {string} code 微信登录code
+     * @returns {Promise<Object>} 登录结果
+     */
+    async wxLogin(code) {
+        try {
+            // 开发环境测试code处理
+            if (process.env.NODE_ENV === 'development' && code.startsWith('test_')) {
+                return this._handleTestCode(code);
+            }
 
-// 生成 JWT token 的函数
-function generateToken(user) {
-    const payload = {
-        userId: user.userId,
-        openid: user.openid,
-        // 可以添加其他您想要包含在 token 中的信息
-    };
-    const secret = '2d7cd2a83d65a94b7cbe9bdffbeac441'; // 请使用安全的密钥
-    const options = {
-        expiresIn: '1h', // token 的有效期
-    };
-    return jwt.sign(payload, secret, options);
-}
+            // 调用微信接口获取openid
+            const wxResponse = await axios.get('https://api.weixin.qq.com/sns/jscode2session', {
+                params: {
+                    appid: process.env.WX_APPID,
+                    secret: process.env.WX_SECRET,
+                    js_code: code,
+                    grant_type: 'authorization_code'
+                }
+            });
 
+            if (wxResponse.data.errcode) {
+                throw new Error(wxResponse.data.errmsg || '微信登录失败');
+            }
 
-// 用户登录的函数
-async function login(openid) {
-    try {
-        // 检查用户是否已存在，如果不存在则创建新用户
-        let user = await User.findOne({ where: { openid: openid } });
-        if (!user) {
-            user = await User.create({ openid: openid });
+            const { openid, session_key } = wxResponse.data;
+
+            // 查找或创建用户
+            let user = await User.findOne({ where: { openid } });
+            const isNewUser = !user;
+
+            if (!user) {
+                // 创建新用户
+                user = await User.create({
+                    openid,
+                    role: 'user',
+                    status: 'pending',
+                    lastLoginAt: new Date()
+                });
+            } else {
+                // 更新登录时间
+                await user.update({
+                    lastLoginAt: new Date()
+                });
+            }
+
+            // 生成token
+            const token = await this.generateAndSaveToken(user);
+
+            return {
+                token,
+                userInfo: this._formatUserInfo(user, isNewUser)
+            };
+        } catch (error) {
+            logger.error('微信登录错误:', error);
+            throw error;
         }
+    }
 
-        // 生成新的 token
-        const token = generateToken(user);
-        // 存储token到Tokens表中  
-        const tokenEntry = await Tokens.create({
-            user_id: user.userId,
-            token: token,
-            expires_at: new Date(Date.now() + 3600000), // 设置过期时间  
-            created_at: new Date(), // 记录创建时间  
-        });
+    /**
+     * 获取用户信息
+     * @param {number} userId 用户ID
+     * @returns {Promise<Object>} 用户信息
+     */
+    async getUserInfo(userId) {
+        try {
+            const user = await User.findByPk(userId);
+            if (!user) {
+                throw new Error('用户不存在');
+            }
+            return this._formatUserInfo(user);
+        } catch (error) {
+            logger.error('获取用户信息错误:', error);
+            throw error;
+        }
+    }
 
-        // // 如果使用单独的 Tokens 模型
-        // const Tokens = await Tokens.create({
-        //   userId: user.id,
-        //   token: token,
-        //   expiresAt: new Date(Date.now() + 3600000), // 设置过期时间（这里与 JWT 的 expiresIn 一致，但也可以不同）
-        // });
-        //
-        // // 如果将 token 字段直接添加到 User 模型中
-        // await user.update({
-        //     // 假设 token 字段名为 authToken
-        //     authToken: token,
-        //     // 可以添加一个字段来存储 token 的过期时间（可选）
-        //     // authTokenExpiresAt: new Date(Date.now() + 3600000),
-        // });
+    /**
+     * 更新用户信息
+     * @param {number} userId 用户ID
+     * @param {Object} updateData 更新数据
+     * @returns {Promise<Object>} 更新结果
+     */
+    async updateUserInfo(userId, updateData) {
+        try {
+            const user = await User.findByPk(userId);
+            if (!user) {
+                throw new Error('用户不存在');
+            }
 
-        // 返回用户信息和 token（注意：出于安全考虑，通常不会直接返回 token 到客户端，而是返回给前端一个经过处理的响应，前端再使用这个响应去获取 token）
-        // 在这里，我们仅作为示例返回
+            // 只允许更新特定字段
+            const allowedFields = ['nickname', 'avatarUrl', 'email', 'phone', 'campus', 'grade', 'major'];
+            const filteredData = Object.keys(updateData)
+                .filter(key => allowedFields.includes(key))
+                .reduce((obj, key) => {
+                    obj[key] = updateData[key];
+                    return obj;
+                }, {});
+
+            await user.update(filteredData);
+            return this._formatUserInfo(user);
+        } catch (error) {
+            logger.error('更新用户信息错误:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 注销账号
+     * @param {number} userId 用户ID
+     */
+    async deleteAccount(userId) {
+        try {
+            const user = await User.findByPk(userId);
+            if (!user) {
+                throw new Error('用户不存在');
+            }
+
+            // 删除用户的所有token
+            await Tokens.destroy({
+                where: { userId }
+            });
+
+            // 软删除用户
+            await user.update({
+                status: 'deleted',
+                deletedAt: new Date()
+            });
+        } catch (error) {
+            logger.error('注销账号错误:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 生成JWT token并保存到数据库
+     * @param {Object} user 用户对象
+     * @returns {Promise<string>} JWT token
+     */
+    async generateAndSaveToken(user) {
+        try {
+            // 生成token
+            const token = jwt.sign(
+                {
+                    id: user.id,
+                    role: user.role,
+                    openId: user.openId
+                },
+                config.JWT_SECRET,
+                { expiresIn: config.JWT_EXPIRES_IN }
+            );
+
+            // 计算过期时间
+            const expiresAt = new Date();
+            expiresAt.setHours(expiresAt.getHours() + 24);
+
+            // 保存token到数据库
+            await Tokens.create({
+                user_id: user.id,
+                token: token,
+                expires_at: expiresAt
+            });
+
+            return token;
+        } catch (error) {
+            logger.error('Token生成或保存失败:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 刷新token
+     * @param {string} oldToken 旧token
+     * @returns {Promise<Object>} 包含新token的对象
+     */
+    async refreshToken(oldToken) {
+        try {
+            // 验证旧token
+            const decoded = jwt.verify(oldToken, config.JWT_SECRET);
+            
+            // 查找数据库中的token记录
+            const tokenRecord = await Tokens.findOne({
+                where: {
+                    token: oldToken,
+                    expiresAt: {
+                        [Op.gt]: new Date()
+                    }
+                }
+            });
+
+            if (!tokenRecord) {
+                throw new Error('Token不存在或已过期');
+            }
+
+            // 查找用户
+            const user = await User.findByPk(decoded.id);
+            if (!user) {
+                throw new Error('用户不存在');
+            }
+
+            // 生成新token
+            const newToken = await this.generateAndSaveToken(user);
+
+            // 删除旧token
+            await Tokens.destroy({
+                where: { token: oldToken }
+            });
+
+            return {
+                token: newToken,
+                userInfo: this._formatUserInfo(user)
+            };
+        } catch (error) {
+            logger.error('刷新Token失败:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 注销登录
+     * @param {string} token JWT token
+     */
+    async logout(token) {
+        try {
+            const result = await Tokens.destroy({
+                where: { token }
+            });
+
+            if (result === 0) {
+                throw new Error('Token不存在');
+            }
+        } catch (error) {
+            logger.error('注销失败:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 验证 token 并返回解码后的用户信息
+     * @param {string} token JWT token
+     * @returns {Promise<Object>} 解码后的用户信息
+     */
+    async verifyTokenAndGetUser(token) {
+        try {
+            // 验证token签名
+            const decoded = jwt.verify(token, config.JWT_SECRET);
+
+            // 检查token是否在数据库中存在且未过期
+            const tokenRecord = await Tokens.findOne({
+                where: {
+                    token: token,
+                    expiresAt: {
+                        [Op.gt]: new Date()
+                    }
+                }
+            });
+
+            if (!tokenRecord) {
+                throw new Error('Token不存在或已过期');
+            }
+
+            // 获取用户信息
+            const user = await User.findByPk(decoded.id);
+            if (!user) {
+                throw new Error('用户不存在');
+            }
+
+            return {
+                user: this._formatUserInfo(user),
+                decoded
+            };
+        } catch (error) {
+            logger.error('Token验证失败:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 清理数据库中的过期 token
+     */
+    async cleanExpiredTokens() {
+        try {
+            const now = new Date();
+            await Tokens.destroy({
+                where: {
+                    expiresAt: {
+                        [Op.lt]: now
+                    }
+                }
+            });
+        } catch (error) {
+            logger.error('清理过期 token 时发生错误:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 格式化用户信息
+     * @private
+     * @param {Object} user 用户对象
+     * @param {boolean} isNewUser 是否新用户
+     * @returns {Object} 格式化后的用户信息
+     */
+    _formatUserInfo(user, isNewUser = false) {
         return {
-            user: user.toJSON(), // 转换为 JSON 对象（不包含 Sequelize 实例的元数据）
-            token: token,
+            id: user.id,
+            openId: user.openId,
+            unionId: user.unionId,
+            nickname: user.nickname,
+            avatarUrl: user.avatarUrl,
+            email: user.email,
+            phone: user.phone,
+            campus: user.campus,
+            grade: user.grade,
+            major: user.major,
+            role: user.role,
+            status: user.status,
+            lastLoginAt: user.lastLoginAt,
+            isNewUser
         };
-    } catch (error) {
-        // 处理错误（例如，数据库连接错误、验证错误等）
-        console.error('Error during login:', error);
-        throw error; // 或者返回一个友好的错误消息给客户端
+    }
+
+    /**
+     * 处理测试环境的登录码
+     * @private
+     * @param {string} code 测试code
+     * @returns {Object} 测试响应
+     */
+    _handleTestCode(code) {
+        const testResponses = {
+            'test_code_1': {
+                token: 'test_token_new_user',
+                userInfo: {
+                    id: 1,
+                    openid: 'test_openid_1',
+                    nickname: '测试新用户',
+                    avatarUrl: 'https://example.com/avatar.jpg',
+                    role: 'user',
+                    status: 'active',
+                    isNewUser: true
+                }
+            },
+            'test_code_2': {
+                token: 'test_token_existing_user',
+                userInfo: {
+                    id: 2,
+                    openid: 'test_openid_2',
+                    nickname: '测试老用户',
+                    avatarUrl: 'https://example.com/avatar.jpg',
+                    role: 'user',
+                    status: 'active',
+                    isNewUser: false
+                }
+            }
+        };
+
+        const response = testResponses[code];
+        if (!response) {
+            throw new Error('无效的测试code');
+        }
+        return response;
     }
 }
 
-module.exports = {
-    login,
-    // ... 其他用户服务函数
-};
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// async function generateCustomToken(openid, session_key, expires_in = 3600) {
-//     // 生成唯一的token
-//     const token = uuidv4();
-//     // 计算过期时间
-//     const expires_at = new Date(new Date().getTime() + expires_in * 1000);
-//
-//     // 检查用户是否已存在，如果不存在，则应该创建新用户（这里为了简化，我们假设用户已存在）
-//     // 在实际应用中，您可能需要根据openid来查找用户
-//     // const user = await User.findOne({ where: { openid: openid } });
-//     // if (!user) {
-//     //     // 创建新用户
-//     // }
-//
-//     // 为了简化，我们直接更新或创建用户（这里假设用户已存在，仅更新token和expires_at）
-//     // 在实际中，您应该根据业务逻辑来决定是更新现有用户还是创建新用户
-//     const [updatedUser, created] = await User.upsert({
-//         openid: openid,
-//         session_key: session_key,
-//         custom_token: token,
-//         expires_at: expires_at
-//     }, {
-//         where: { openid: openid },
-//         fields: ['openid', 'session_key', 'custom_token', 'expires_at'] // 仅更新这些字段
-//     });
-//
-//     return token;
-// }
-//
-// module.exports = { generateCustomToken };
+module.exports = new UserService();

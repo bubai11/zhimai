@@ -1,0 +1,10 @@
+{
+  "version": "1",
+  "name": "zhimai-api",
+  "description": "智汇广金项目的 API 测试集合",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

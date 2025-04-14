@@ -1,0 +1,66 @@
+meta {
+  name: 获取活动列表
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/activities/list
+  body: json
+}
+
+body:json {
+  {
+    "type": "二课",
+    "status": "ongoing",
+    "page": 1,
+    "limit": 10,
+    "timestamp": "{{$timestamp}}",
+    "merchant_id": "{{merchant_id}}"
+  }
+}
+
+vars:pre-request {
+  timestamp: Math.floor(Date.now() / 1000).toString()
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  // 生成签名
+  const params = {...request.body};
+  const apiKey = environment.get("apiKey");
+  
+  // 按键名排序并构造待签名字符串
+  const sortedKeys = Object.keys(params).sort();
+  const stringToBeSigned = sortedKeys
+    .map(key => `${key}=${params[key]}`)
+    .join('&');
+  
+  // 计算 HMAC-SHA256 签名
+  const sign = CryptoJS.HmacSHA256(stringToBeSigned, apiKey).toString();
+  
+  // 将签名添加到请求体
+  request.body.sign = sign;
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(response.status).to.equal(200);
+  });
+  
+  test("Response has activities array", function() {
+    expect(response.body).to.have.property('activities');
+    expect(response.body.activities).to.be.an('array');
+  });
+  
+  test("Response has correct structure", function() {
+    expect(response.body).to.have.property('code');
+    expect(response.body).to.have.property('message');
+    expect(response.body).to.have.property('data');
+    expect(response.body.data).to.have.property('total');
+    expect(response.body.data).to.have.property('activities');
+  });
+} 
