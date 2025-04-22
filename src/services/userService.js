@@ -1,8 +1,7 @@
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
-const User = require('../models/User');
-const Tokens = require('../models/Tokens');
+const { User } = require('../models');
 const logger = require('../utils/logger');
 const config = require('../config');
 
@@ -33,7 +32,7 @@ class UserService {
                 throw new Error(wxResponse.data.errmsg || '微信登录失败');
             }
 
-            const { openid, session_key } = wxResponse.data;
+            const { openid, session_key, unionid } = wxResponse.data;
 
             // 查找或创建用户
             let user = await User.findOne({ where: { openid } });
@@ -43,8 +42,11 @@ class UserService {
                 // 创建新用户
                 user = await User.create({
                     openid,
+                    unionid,
+                    nickname,
+                    avatarUrl,  
                     role: 'user',
-                    status: 'pending',
+                    status: 'active',
                     lastLoginAt: new Date()
                 });
             } else {
@@ -55,7 +57,7 @@ class UserService {
             }
 
             // 生成token
-            const token = await this.generateAndSaveToken(user);
+            const token = await this.generateToken(user);
 
             return {
                 token,
@@ -126,16 +128,14 @@ class UserService {
                 throw new Error('用户不存在');
             }
 
-            // 删除用户的所有token
-            await Tokens.destroy({
-                where: { userId }
-            });
+            // 删除用户相关的其他数据（如收藏、订单、评论等）
+            // await Favorite.destroy({ where: { userId } });
+            // await Orders.destroy({ where: { userId } });
+            // ...
 
-            // 软删除用户
-            await user.update({
-                status: 'deleted',
-                deletedAt: new Date()
-            });
+            // 最后删除用户本身
+            await user.destroy();
+
         } catch (error) {
             logger.error('注销账号错误:', error);
             throw error;
@@ -143,163 +143,38 @@ class UserService {
     }
 
     /**
-     * 生成JWT token并保存到数据库
-     * @param {Object} user 用户对象
-     * @returns {Promise<string>} JWT token
-     */
-    async generateAndSaveToken(user) {
-        try {
-            // 生成token
-            const token = jwt.sign(
-                {
-                    id: user.id,
-                    role: user.role,
-                    openId: user.openId
-                },
-                config.JWT_SECRET,
-                { expiresIn: config.JWT_EXPIRES_IN }
-            );
-
-            // 计算过期时间
-            const expiresAt = new Date();
-            expiresAt.setHours(expiresAt.getHours() + 24);
-
-            // 保存token到数据库
-            await Tokens.create({
-                user_id: user.id,
-                token: token,
-                expires_at: expiresAt
-            });
-
-            return token;
-        } catch (error) {
-            logger.error('Token生成或保存失败:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * 刷新token
-     * @param {string} oldToken 旧token
-     * @returns {Promise<Object>} 包含新token的对象
-     */
-    async refreshToken(oldToken) {
-        try {
-            // 验证旧token
-            const decoded = jwt.verify(oldToken, config.JWT_SECRET);
-            
-            // 查找数据库中的token记录
-            const tokenRecord = await Tokens.findOne({
-                where: {
-                    token: oldToken,
-                    expiresAt: {
-                        [Op.gt]: new Date()
-                    }
-                }
-            });
-
-            if (!tokenRecord) {
-                throw new Error('Token不存在或已过期');
-            }
-
-            // 查找用户
-            const user = await User.findByPk(decoded.id);
-            if (!user) {
-                throw new Error('用户不存在');
-            }
-
-            // 生成新token
-            const newToken = await this.generateAndSaveToken(user);
-
-            // 删除旧token
-            await Tokens.destroy({
-                where: { token: oldToken }
-            });
-
-            return {
-                token: newToken,
-                userInfo: this._formatUserInfo(user)
-            };
-        } catch (error) {
-            logger.error('刷新Token失败:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * 注销登录
-     * @param {string} token JWT token
-     */
-    async logout(token) {
-        try {
-            const result = await Tokens.destroy({
-                where: { token }
-            });
-
-            if (result === 0) {
-                throw new Error('Token不存在');
-            }
-        } catch (error) {
-            logger.error('注销失败:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * 验证 token 并返回解码后的用户信息
+     * 验证token
      * @param {string} token JWT token
      * @returns {Promise<Object>} 解码后的用户信息
      */
-    async verifyTokenAndGetUser(token) {
+    async verifyToken(token) {
         try {
-            // 验证token签名
             const decoded = jwt.verify(token, config.JWT_SECRET);
+            
+            if (decoded.type !== 'user') {
+                throw new Error('无效的token类型');
+            }
 
-            // 检查token是否在数据库中存在且未过期
-            const tokenRecord = await Tokens.findOne({
+            const user = await User.findOne({
                 where: {
-                    token: token,
-                    expiresAt: {
-                        [Op.gt]: new Date()
-                    }
+                    id: decoded.id,
+                    status: 'active'
                 }
             });
 
-            if (!tokenRecord) {
-                throw new Error('Token不存在或已过期');
-            }
-
-            // 获取用户信息
-            const user = await User.findByPk(decoded.id);
             if (!user) {
-                throw new Error('用户不存在');
+                throw new Error('用户不存在或已被禁用');
             }
 
             return {
-                user: this._formatUserInfo(user),
-                decoded
+                user: {
+                    id: user.id,
+                    openid: user.openid,
+                    unionid: user.unionid
+                }
             };
         } catch (error) {
-            logger.error('Token验证失败:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * 清理数据库中的过期 token
-     */
-    async cleanExpiredTokens() {
-        try {
-            const now = new Date();
-            await Tokens.destroy({
-                where: {
-                    expiresAt: {
-                        [Op.lt]: now
-                    }
-                }
-            });
-        } catch (error) {
-            logger.error('清理过期 token 时发生错误:', error);
+            logger.error('验证token失败:', error);
             throw error;
         }
     }
@@ -369,6 +244,167 @@ class UserService {
             throw new Error('无效的测试code');
         }
         return response;
+    }
+
+    /**
+     * 获取所有用户列表
+     * @returns {Promise<Array>} 用户列表
+     */
+    async getAllUsers() {
+        try {
+            return await User.findAll({
+                attributes: ['id', 'username', 'email', 'role', 'status', 'createdAt'],
+                order: [['createdAt', 'DESC']]
+            });
+        } catch (error) {
+            logger.error('获取用户列表失败:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 获取单个用户信息
+     * @param {number} id 用户ID
+     * @returns {Promise<Object>} 用户信息
+     */
+    async getUserById(id) {
+        try {
+            const user = await User.findByPk(id, {
+                attributes: ['id', 'username', 'email', 'role', 'status', 'createdAt']
+            });
+            if (!user) {
+                throw new Error('用户不存在');
+            }
+            return user;
+        } catch (error) {
+            logger.error('获取用户信息失败:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 获取用户列表
+     * @param {Object} params 查询参数
+     * @returns {Promise<Object>} 用户列表
+     */
+    async getUserList(params) {
+        try {
+            const {
+                page = 1,
+                pageSize = 10,
+                keyword,
+                status,
+                userType,
+                startDate,
+                endDate
+            } = params;
+
+            const where = {};
+            if (status) where.status = status;
+            if (userType) where.userType = userType;
+            if (keyword) {
+                where[Op.or] = [
+                    { nickname: { [Op.like]: `%${keyword}%` } },
+                    { studentId: { [Op.like]: `%${keyword}%` } },
+                    { phone: { [Op.like]: `%${keyword}%` } },
+                    { email: { [Op.like]: `%${keyword}%` } }
+                ];
+            }
+            if (startDate && endDate) {
+                where.createdAt = {
+                    [Op.between]: [startDate, endDate]
+                };
+            }
+
+            const { rows: users, count: total } = await User.findAndCountAll({
+                where,
+                offset: (page - 1) * pageSize,
+                limit: pageSize,
+                order: [['createdAt', 'DESC']]
+            });
+
+            return {
+                list: users,
+                pagination: {
+                    total,
+                    page: Number(page),
+                    pageSize: Number(pageSize),
+                    totalPages: Math.ceil(total / pageSize)
+                }
+            };
+        } catch (error) {
+            logger.error('获取用户列表失败:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 更新用户信息
+     * @param {number} id 用户ID
+     * @param {Object} updateData 更新数据
+     * @returns {Promise<Object>} 更新后的用户信息
+     */
+    async updateUser(id, updateData) {
+        try {
+            const user = await User.findByPk(id);
+            if (!user) {
+                throw new Error('用户不存在');
+            }
+    
+            await user.update(updateData);
+            logger.info('用户信息更新成功:', { userId: id });
+    
+            return await this.getUserById(id);
+        } catch (error) {
+            logger.error('更新用户信息失败:', error);
+            throw error;
+        }
+    }
+    
+
+    /**
+     * 删除用户
+     * @param {number} id 用户ID
+     */
+    async deleteUser(id) {
+        try {
+            const user = await User.findByPk(id);
+            if (!user) {
+                throw new Error('用户不存在');
+            }
+
+            await user.destroy();
+            logger.info('用户删除成功:', { userId: id });
+        } catch (error) {
+            logger.error('删除用户失败:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 生成用户token
+     * @param {User} user 用户对象
+     * @returns {Promise<string>} token
+     */
+    async generateToken(user) {
+        try {
+            const token = jwt.sign(
+                {
+                    id: user.id,
+                    openid: user.openid,
+                    unionid: user.unionid,
+                    type: 'user'
+                },
+                config.JWT_SECRET,
+                { expiresIn: config.JWT_EXPIRES_IN_USER }
+            );
+
+            logger.info('用户token生成成功:', { userId: user.id });
+            return token;
+        } catch (error) {
+            logger.error('生成用户token失败:', error);
+            throw error;
+        }
     }
 }
 

@@ -1,0 +1,20 @@
+meta {
+  name: 初始化超级管理员
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{host}}/api/admin/initialize-super-admin
+  body: json
+  auth: inherit
+}
+
+body:json {
+  
+  {
+      "email": "super-admin@gduf.com",
+      "password": "zhimaisuperadmin",
+      "name": "超级管理员"
+  }
+}

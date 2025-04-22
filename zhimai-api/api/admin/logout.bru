@@ -1,0 +1,21 @@
+meta {
+  name: 退出登录
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{host}}/api/admin/logout
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.code === 200) {
+    bru.setEnvVar("token", "");  // 清空 token
+  }
+}

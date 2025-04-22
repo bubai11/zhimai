@@ -1,0 +1,19 @@
+meta {
+  name: 根据id获取管理员信息
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{host}}/api/admin/admins/:id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  id: 3
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

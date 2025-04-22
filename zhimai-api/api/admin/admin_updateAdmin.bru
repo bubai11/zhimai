@@ -1,0 +1,26 @@
+meta {
+  name: 根据id更新管理员信息
+  type: http
+  seq: 11
+}
+
+put {
+  url: {{host}}/api/admin/admins/:id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  id: 4
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "name": "超级管理员更新name",
+    "email": "updated_editor@example.com"
+  }
+}

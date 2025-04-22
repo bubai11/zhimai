@@ -1,0 +1,22 @@
+meta {
+  name: 更新个人信息
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{host}}/api/admin/profile
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "name": "管理员新昵称",
+    "email": "admin_new@example.com"
+  }
+}

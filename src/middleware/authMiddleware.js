@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config');
+const { Response } = require('../utils/response');
 const logger = require('../utils/logger');
+const userService = require('../services/userService');
 
 /**
  * 从请求头或查询参数中获取 token
@@ -19,91 +21,29 @@ const extractToken = (req) => {
 };
 
 /**
- * 验证 JWT Token 的中间件
+ * 验证用户 JWT Token 的中间件
  */
 const verifyToken = async (req, res, next) => {
     try {
-        const token = extractToken(req);
-
-        if (!token) {
-            return res.status(401).json({
-                code: 401,
-                message: '未提供访问令牌',
-                data: null
-            });
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json(Response.unauthorized('未提供token'));
         }
 
-        // 只验证 JWT 的有效性
-        const decoded = jwt.verify(token, config.JWT_SECRET);
+        const token = authHeader.split(' ')[1];
         
-        // 将 token 和解码后的信息添加到请求对象
-        req.token = token;
-        req.tokenData = decoded;
+        // 使用 userService 的 verifyToken 方法进行验证
+        const { user } = await userService.verifyToken(token);
+        
+        // 将用户信息添加到请求对象
+        req.user = user;
         
         next();
     } catch (error) {
         logger.error('Token验证失败:', error);
-        return res.status(401).json({
-            code: 401,
-            message: '无效的访问令牌',
-            data: null
-        });
+        res.status(401).json(Response.unauthorized('无效的token'));
     }
 };
-
-/**
- * 验证管理员权限的中间件
- */
-const verifyAdmin = [
-    verifyToken,
-    (req, res, next) => {
-        if (req.tokenData && req.tokenData.role === 'admin') {
-            next();
-        } else {
-            return res.status(403).json({
-                code: 403,
-                message: '需要管理员权限',
-                data: null
-            });
-        }
-    }
-];
-
-/**
- * 验证教师权限的中间件
- */
-const verifyTeacher = [
-    verifyToken,
-    (req, res, next) => {
-        if (req.tokenData && (req.tokenData.role === 'teacher' || req.tokenData.role === 'admin')) {
-            next();
-        } else {
-            return res.status(403).json({
-                code: 403,
-                message: '需要教师权限',
-                data: null
-            });
-        }
-    }
-];
-
-/**
- * 验证学生权限的中间件
- */
-const verifyStudent = [
-    verifyToken,
-    (req, res, next) => {
-        if (req.tokenData && (req.tokenData.role === 'student' || req.tokenData.role === 'admin')) {
-            next();
-        } else {
-            return res.status(403).json({
-                code: 403,
-                message: '需要学生权限',
-                data: null
-            });
-        }
-    }
-];
 
 /**
  * 验证用户是否有权限访问特定资源
@@ -112,23 +52,16 @@ const verifyStudent = [
 const verifyResourceOwner = (userId) => [
     verifyToken,
     (req, res, next) => {
-        if (req.tokenData && (req.tokenData.id === userId || req.tokenData.role === 'admin')) {
+        if (req.user && req.user.id === userId) {
             next();
         } else {
-            return res.status(403).json({
-                code: 403,
-                message: '无权访问此资源',
-                data: null
-            });
+            return res.status(403).json(Response.forbidden('无权访问此资源'));
         }
     }
 ];
 
 module.exports = {
     verifyToken,
-    verifyAdmin,
-    verifyTeacher,
-    verifyStudent,
     verifyResourceOwner,
     extractToken
 }; 

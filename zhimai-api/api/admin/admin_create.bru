@@ -1,0 +1,30 @@
+meta {
+  name: 添加管理员
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{host}}/api/admin/admins
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  // {
+  //   "email":"adminadmin@gduf.com",
+  //   "password":"123456",
+  //   "name":"admin",
+  //   "role": "admin"
+  // }
+  {
+    "email": "editor3@test.com",
+    "password": "1234567",
+    "name":"editor3",
+    "role": "editor"
+  }
+}
