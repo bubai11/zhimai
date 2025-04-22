@@ -1,13 +1,8 @@
 //定义用户相关的路由
 const express = require('express');
-const User = require('../models/User');
-const querystring = require("querystring");
-const {sign} = require("jsonwebtoken");
 const userController = require('../controllers/userController');
 const { verifyToken } = require('../middleware/authMiddleware');
-// const { checkRole, checkPermission } = require('../middleware/checkRole');
-const { ROLES } = require('../constants/roles');
-const adminController = require('../controllers/adminController');
+const { checkAdminRole } = require('../middleware/adminAuthMiddleware');
 
 const router = express.Router();
 
@@ -23,6 +18,24 @@ router.get('/info', userController.getUserInfo);           // 获取当前用户
 router.put('/profile', userController.updateUserInfo);     // 更新当前用户信息
 router.post('/logout', userController.logout);             // 退出登录
 router.delete('/account', userController.deleteAccount);   // 注销账号
+
+// 所有用户管理路由都需要管理员权限
+router.use(checkAdminRole(['admin', 'super_admin']));
+
+// 获取所有用户列表
+router.get('/users', userController.getAllUsers);
+
+// 获取用户列表（分页）
+router.get('/users/list', userController.getUserList);
+
+// 获取单个用户信息
+router.get('/users/:id', userController.getUserById);
+
+// 更新用户信息
+router.put('/users/:id', userController.updateUser);
+
+// 删除用户
+router.delete('/users/:id', userController.deleteUser);
 
 module.exports = router;
 

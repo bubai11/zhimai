@@ -37,6 +37,7 @@ coverage/
 
 # SpecStory
 .specstory/history/
+.specstory/
 
 # Old cloud hosting configuration
 container.config.json 

@@ -196,38 +196,94 @@ class UserController {
     }
 
     /**
-     * 获取用户列表（仅管理员可用）
+     * 获取所有用户列表
+     * @param {Object} req 请求对象
+     * @param {Object} res 响应对象
+     */
+    async getAllUsers(req, res) {
+        try {
+            const users = await userService.getAllUsers();
+            res.json(Response.success(users, '获取用户列表成功'));
+        } catch (error) {
+            logger.error('获取用户列表错误:', error);
+            res.status(500).json(Response.error(error.message));
+        }
+    }
+
+    /**
+     * 获取单个用户信息
+     * @param {Object} req 请求对象
+     * @param {Object} res 响应对象
+     */
+    async getUserById(req, res) {
+        try {
+            const { id } = req.params;
+            const user = await userService.getUserById(id);
+            res.json(Response.success(user, '获取用户信息成功'));
+        } catch (error) {
+            logger.error('获取用户信息错误:', error);
+            if (error.message === '用户不存在') {
+                res.status(404).json(Response.notFound(error.message));
+            } else {
+                res.status(500).json(Response.error(error.message));
+            }
+        }
+    }
+
+    /**
+     * 获取用户列表（分页）
+     * @param {Object} req 请求对象
+     * @param {Object} res 响应对象
      */
     async getUserList(req, res) {
         try {
-            const { 
-                page = 1, 
-                limit = 10, 
-                role, 
-                status,
-                campus,
-                grade,
-                search 
-            } = req.query;
-            
-            const result = await userService.getUserList({
-                page: parseInt(page),
-                limit: parseInt(limit),
-                role,
-                status,
-                campus,
-                grade,
-                search
-            });
-
-            res.json(result);
+            const params = req.query;
+            const result = await userService.getUserList(params);
+            res.json(Response.success(result, '获取用户列表成功'));
         } catch (error) {
-            logger.error('获取用户列表失败:', error);
-            res.status(500).json({
-                code: 500,
-                message: '获取用户列表失败',
-                data: null
-            });
+            logger.error('获取用户列表错误:', error);
+            res.status(500).json(Response.error(error.message));
+        }
+    }
+
+    /**
+     * 更新用户信息
+     * @param {Object} req 请求对象
+     * @param {Object} res 响应对象
+     */
+    async updateUser(req, res) {
+        try {
+            const { id } = req.params;
+            const updateData = req.body;
+            const user = await userService.updateUser(id, updateData);
+            res.json(Response.success(user, '更新用户信息成功'));
+        } catch (error) {
+            logger.error('更新用户信息错误:', error);
+            if (error.message === '用户不存在') {
+                res.status(404).json(Response.notFound(error.message));
+            } else {
+                res.status(500).json(Response.error(error.message));
+            }
+        }
+    }
+
+    /**
+     * 删除用户
+     * @param {Object} req 请求对象
+     * @param {Object} res 响应对象
+     */
+    async deleteUser(req, res) {
+        try {
+            const { id } = req.params;
+            await userService.deleteUser(id);
+            res.json(Response.success(null, '删除用户成功'));
+        } catch (error) {
+            logger.error('删除用户错误:', error);
+            if (error.message === '用户不存在') {
+                res.status(404).json(Response.notFound(error.message));
+            } else {
+                res.status(500).json(Response.error(error.message));
+            }
         }
     }
 }

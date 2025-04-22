@@ -2,18 +2,14 @@ const express = require('express');
 const cors = require('cors');
 const sequelize = require('./config/database');
 require('dotenv').config();
-const cron = require('node-cron');
 const userService = require('./services/userService');
-
-const userRoutes = require('./routes/userRoutes');
-// const testRoutes = require('./routes/testRoutes');
-const activityRoutes = require('./routes/activityRoutes');  // 添加活动路由
-const adminRoutes = require('./routes/adminRoutes');  // 添加管理员路由
-
-// 添加新的中间件导入
-// const { errorHandler } = require('./middlewares/errorHandler');
+const scheduler = require('./utils/scheduler');
 const logger = require('./utils/logger');
-const requestLogger = require('./middleware/requestLogger');  // 导入请求日志中间件
+const requestLogger = require('./middleware/requestLogger');
+
+const activityRoutes = require('./routes/activityRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
@@ -26,10 +22,10 @@ const corsOptions = {
         'http://127.0.0.1:*',
         'http://localhost:*',
         'http://172.20.10.3:3000',
-        'http://10.235.68.105:3000',  // 添加你的IP
-        'http://10.235.71.254:3000',  // 添加你的IP
-        'http://10.205.27.253:3000',  // 添加你的IP
-        '*'  // 允许所有来源
+        'http://10.235.68.105:3000',
+        'http://10.235.71.254:3000',
+        'http://10.205.27.253:3000',
+        '*'
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -46,15 +42,12 @@ app.options('*', cors(corsOptions));
 // 中间件
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// 使用请求日志中间件
 app.use(requestLogger);
 
 // 路由
 app.use('/api/user', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/activity', activityRoutes);
-// app.use('/api/test', testRoutes);
 
 // 测试路由
 app.get('/hello', (req, res) => {
@@ -91,24 +84,16 @@ app.get('/health', (req, res) => {
     });
 });
 
-// 错误处理中间件应该放在所有路由之后
-// app.use(errorHandler);
-
 // 数据库连接和同步
 async function initializeDatabase() {
     try {
-        // 测试数据库连接
         await sequelize.authenticate();
         console.log('MySQL 连接成功');
-
-        // 同步数据库模型
         await sequelize.sync();
         console.log('数据库模型同步完成');
-
         return true;
     } catch (error) {
         console.error('数据库初始化失败:', error);
-        // 在生产环境中，你可能想要在这里优雅地关闭应用
         if (process.env.NODE_ENV === 'production') {
             console.error('生产环境中数据库错误，应用将退出');
             process.exit(1);
@@ -117,15 +102,20 @@ async function initializeDatabase() {
     }
 }
 
-// 设置定时任务，每天凌晨 3 点清理过期 token
-cron.schedule('0 3 * * *', async () => {
-    logger.info('开始执行过期 token 清理任务');
-    try {
-        await userService.cleanExpiredTokens();
-        logger.info('过期 token 清理任务完成');
-    } catch (error) {
-        logger.error('过期 token 清理任务失败:', error);
-    }
+// 初始化定时任务
+// scheduler.initializeJobs();
+
+// 优雅关闭处理
+// process.on('SIGTERM', () => {
+//     logger.info('收到 SIGTERM 信号，准备关闭应用...');
+//     scheduler.stopAllJobs();
+//     process.exit(0);
+// });
+
+process.on('SIGINT', () => {
+    logger.info('收到 SIGINT 信号，准备关闭应用...');
+    scheduler.stopAllJobs();
+    process.exit(0);
 });
 
 // 启动服务器
@@ -142,7 +132,6 @@ initializeDatabase().then((dbSuccess) => {
             console.log('网络环境检测:');
             console.log('----------------------------------------');
             
-            // 获取并显示所有网络接口信息
             Object.keys(networkInterfaces).forEach(interfaceName => {
                 console.log(`\n接口 ${interfaceName}:`);
                 networkInterfaces[interfaceName].forEach(interface => {

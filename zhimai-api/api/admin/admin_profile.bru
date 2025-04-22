@@ -1,0 +1,15 @@
+meta {
+  name: 获取个人信息
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{host}}/api/admin/profile
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

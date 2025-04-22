@@ -1,0 +1,34 @@
+meta {
+  name: 管理员登录
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{host}}/api/admin/login
+  body: json
+  auth: none
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)
+}
+
+body:json {
+  {
+    "email":"super-admin@gduf.com",
+    "password":"zhimaisuperadmin"
+  }
+  // {
+  //   "email":"admin_new@example.com",
+  //   "password":"123456"
+  // }
+  // {
+  //   "email":"editor3@test.com",
+  //   "password":"123456"
+  // }
+}
+
+script:post-response {
+  bru.setEnvVar("token",res.body.data.token);
+}

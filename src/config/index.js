@@ -2,9 +2,9 @@ require('dotenv').config();
 
 module.exports = {
     // JWT配置
-    JWT_SECRET: process.env.JWT_SECRET || 'your-default-secret-key',
-    JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '24h',
-
+    JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key',
+    JWT_EXPIRES_IN_ADMIN: 7200,  // 2小时，以秒为单位
+    JWT_EXPIRES_IN_USER: 604800,  // 7天，以秒为单位
     // 数据库配置
     DB_HOST: process.env.DB_HOST || 'localhost',
     DB_PORT: process.env.DB_PORT || 3306,

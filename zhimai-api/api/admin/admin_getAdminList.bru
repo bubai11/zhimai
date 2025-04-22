@@ -1,0 +1,15 @@
+meta {
+  name: 获取管理员列表
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{host}}/api/admin/admins
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
