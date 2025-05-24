@@ -1,16 +1,6 @@
 //定义用户模型
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database'); // 需要创建这个配置文件
-
-// 检查连接
-(async () => {
-    try {
-        await sequelize.authenticate();
-        console.log('Connection has been established successfully.');
-    } catch (error) {
-        console.error('Unable to connect to the database:', error);
-    }
-})();
+const sequelize = require('../config/database');
 
 const User = sequelize.define('User', {
     id: {
@@ -19,29 +9,31 @@ const User = sequelize.define('User', {
         autoIncrement: true,
         comment: '用户唯一标识'
     },
-    openId: {
-        field: 'openId',
+    openid: {
+        field: 'open_id',
         type: DataTypes.STRING(64),
         unique: true,
         allowNull: false,
         comment: '微信openId'
     },
-    unionId: {
-        field: 'unionId',
+    unionid: {
+        field: 'union_id',
         type: DataTypes.STRING(64),
         unique: true,
         allowNull: true,
         comment: '微信unionId'
     },
     nickname: {
+        field: 'nickname',
         type: DataTypes.STRING(50),
         allowNull: true,
         comment: '用户昵称'
     },
     avatarUrl: {
-        field: 'avatarUrl',
+        field: 'avatar_url',
         type: DataTypes.STRING(255),
         allowNull: true,
+        defaultValue: null,
         comment: '用户头像URL'
     },
     email: {
@@ -84,18 +76,16 @@ const User = sequelize.define('User', {
         comment: '用户状态'
     },
     lastLoginAt: {
-        field: 'lastLoginAt',
+        field: 'last_login_at',
         type: DataTypes.DATE,
         allowNull: true,
         comment: '最后登录时间'
     }
-}, 
-{
-    paranoid: false, // ❌ 取消软删除功能（默认就是 false，其实可以不写）
-},
-{
+}, {
     tableName: 'users',
     timestamps: true,
+    paranoid: false,
+    underscored: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at'
 });

@@ -1,0 +1,15 @@
+meta {
+  name: 管理员获取用户列表（分页）
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{host}}/api/user/users/list
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

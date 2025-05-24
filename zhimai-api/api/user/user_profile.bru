@@ -1,0 +1,21 @@
+meta {
+  name: 更新当前用户信息
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{host}}/api/user/profile
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{user_token}}
+}
+
+body:json {
+  {
+      "major": "计算机科学与技术"
+  }
+}

@@ -21,6 +21,7 @@ const verifyAdminToken = async (req, res, next) => {
         });
         
         // 将管理员信息添加到请求对象
+        logger.info('管理员验证成功:', { adminId: admin.id, role: admin.role });
         req.admin = admin;
         
         // 如果生成了新token，在响应头中返回

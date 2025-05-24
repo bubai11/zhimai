@@ -1,0 +1,24 @@
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    volumes:
+      - .:/app  # 挂载当前目录用于热更新（dev环境）
+    command: npm run dev  # 指定开发启动方式，使用 nodemon
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+
+volumes:
+  redis-data:
