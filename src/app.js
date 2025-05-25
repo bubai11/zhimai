@@ -54,7 +54,7 @@ app.use(createRateLimiter({
 // 路由
 app.use('/api/user', userRoutes);
 app.use('/api/admin', adminRoutes);
-// app.use('/api/activity', activityRoutes);
+app.use('/api/activities', activityRoutes);
 
 // 测试路由
 app.get('/hello', (req, res) => {

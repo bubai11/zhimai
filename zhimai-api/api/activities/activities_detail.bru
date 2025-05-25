@@ -1,0 +1,15 @@
+meta {
+  name: 获取活动详情
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{host}}/api/activities/:id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  id: 3
+}

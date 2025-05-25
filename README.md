@@ -38,7 +38,7 @@ cd zhimai-backend
 ```bash
 npm install
 # 或
-yarn install
+# yarn install
 ```
 
 3. 配置环境变量

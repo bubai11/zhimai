@@ -1,12 +1,12 @@
 {
     "verbose": true,
     "ignore": [
-        "node_modules",
+        "node_modules/**/*",
         "*.test.js",
-        "docs/*"
+        "docs/**/*"
     ],
     "watch": [
-        "service/"
+        "src/**/*"
     ],
     "ext": "js,json,env",
     "exec": "node src/app.js",

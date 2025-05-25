@@ -1,221 +1,215 @@
 const activityService = require('../services/activityService');
-const Response = require('../utils/response');
+const { Response } = require('../utils/response');
 const logger = require('../utils/logger');
 
 class ActivityController {
     /**
-     * 获取活动列表（用户视图）
-     * @param {Object} req 请求对象
-     * @param {Object} res 响应对象
+     * 获取活动列表
      */
-    async getAllActivities(req, res) {
+    async getActivities(req, res) {
         try {
             const activities = await activityService.getAllActivities(req.query);
             res.json(Response.success(activities, '获取活动列表成功'));
         } catch (error) {
-            logger.error('获取活动列表错误:', error);
-            res.status(500).json(Response.error(error.message));
+            logger.error('获取活动列表失败:', {
+                error: error.message,
+                stack: error.stack,
+                query: req.query
+            });
+            res.status(500).json(Response.error(error.message || '获取活动列表失败'));
         }
     }
 
     /**
-     * 获取活动详情（用户视图）
-     * @param {Object} req 请求对象
-     * @param {Object} res 响应对象
+     * 获取活动详情
      */
     async getActivityById(req, res) {
         try {
-            const { id } = req.params;
-            const activity = await activityService.getActivityById(id);
+            const activity = await activityService.getActivityById(
+                req.params.id,
+                req.user?.id // 传入当前用户ID（如果已登录）
+            );
             if (!activity) {
                 return res.status(404).json(Response.notFound('活动不存在'));
             }
             res.json(Response.success(activity, '获取活动详情成功'));
         } catch (error) {
-            logger.error('获取活动详情错误:', error);
-            res.status(500).json(Response.error(error.message));
+            logger.error('获取活动详情失败:', {
+                error: error.message,
+                stack: error.stack,
+                activityId: req.params.id
+            });
+            res.status(500).json(Response.error(error.message || '获取活动详情失败'));
         }
     }
 
     /**
-     * 获取我参与的活动
-     * @param {Object} req 请求对象
-     * @param {Object} res 响应对象
+     * 获取我收藏的活动列表
      */
-    async getMyActivities(req, res) {
+    async getMyFavorites(req, res) {
         try {
-            const activities = await activityService.getMyActivities(req.user.id);
-            res.json(Response.success(activities, '获取我的活动列表成功'));
+            const userId = req.user?.id;
+            if (!userId) {
+                return res.status(401).json(Response.unauthorized('请先登录'));
+            }
+
+            const activities = await activityService.getMyFavorites(userId);
+            res.json(Response.success(activities, '获取我的收藏列表成功'));
         } catch (error) {
-            logger.error('获取我的活动列表错误:', error);
-            res.status(500).json(Response.error(error.message));
+            logger.error('获取我的收藏列表失败:', {
+                error: error.message,
+                stack: error.stack,
+                userId: req.user?.id
+            });
+            res.status(500).json(Response.error('获取我的收藏列表失败'));
         }
     }
 
     /**
-     * 参加活动
-     * @param {Object} req 请求对象
-     * @param {Object} res 响应对象
+     * 收藏活动
      */
-    async joinActivity(req, res) {
+    async favoriteActivity(req, res) {
         try {
-            const { id } = req.params;
-            const result = await activityService.joinActivity(id, req.user.id);
-            res.json(Response.success(result, '参加活动成功'));
+            const userId = req.user?.id;
+            if (!userId) {
+                return res.status(401).json(Response.unauthorized('请先登录'));
+            }
+
+            const activityId = req.params.id;
+            const result = await activityService.favoriteActivity(activityId, userId);
+            res.json(Response.success(result, '收藏活动成功'));
         } catch (error) {
-            logger.error('参加活动错误:', error);
+            logger.error('收藏活动失败:', {
+                error: error.message,
+                stack: error.stack,
+                userId: req.user?.id,
+                activityId: req.params.id
+            });
+
             if (error.message === '活动不存在') {
                 res.status(404).json(Response.notFound(error.message));
-            } else if (error.message === '活动人数已满' || error.message === '已经参加过该活动') {
+            } else if (error.message === '已经收藏过该活动') {
                 res.status(400).json(Response.badRequest(error.message));
             } else {
-                res.status(500).json(Response.error(error.message));
+                res.status(500).json(Response.error('收藏活动失败'));
             }
         }
     }
 
     /**
-     * 退出活动
-     * @param {Object} req 请求对象
-     * @param {Object} res 响应对象
+     * 取消收藏活动
      */
-    async leaveActivity(req, res) {
+    async unfavoriteActivity(req, res) {
         try {
-            const { id } = req.params;
-            const result = await activityService.leaveActivity(id, req.user.id);
-            res.json(Response.success(result, '退出活动成功'));
+            const userId = req.user?.id;
+            if (!userId) {
+                return res.status(401).json(Response.unauthorized('请先登录'));
+            }
+
+            const activityId = req.params.id;
+            await activityService.unfavoriteActivity(activityId, userId);
+            res.json(Response.success(null, '取消收藏成功'));
         } catch (error) {
-            logger.error('退出活动错误:', error);
-            if (error.message === '活动不存在' || error.message === '未参加该活动') {
+            logger.error('取消收藏失败:', {
+                error: error.message,
+                stack: error.stack,
+                userId: req.user?.id,
+                activityId: req.params.id
+            });
+
+            if (error.message === '未收藏该活动') {
                 res.status(404).json(Response.notFound(error.message));
             } else {
-                res.status(500).json(Response.error(error.message));
+                res.status(500).json(Response.error('取消收藏失败'));
             }
         }
     }
 
-    // 管理员接口
     /**
-     * 获取活动列表（管理员视图）
-     * @param {Object} req 请求对象
-     * @param {Object} res 响应对象
-     */
-    async getAdminActivities(req, res) {
-        try {
-            const activities = await activityService.getAdminActivities(req.query);
-            res.json(Response.success(activities, '获取活动列表成功'));
-        } catch (error) {
-            logger.error('获取活动列表错误:', error);
-            res.status(500).json(Response.error(error.message));
-        }
-    }
-
-    /**
-     * 获取活动详情（管理员视图）
-     * @param {Object} req 请求对象
-     * @param {Object} res 响应对象
-     */
-    async getAdminActivityById(req, res) {
-        try {
-            const { id } = req.params;
-            const activity = await activityService.getAdminActivityById(id);
-            if (!activity) {
-                return res.status(404).json(Response.notFound('活动不存在'));
-            }
-            res.json(Response.success(activity, '获取活动详情成功'));
-        } catch (error) {
-            logger.error('获取活动详情错误:', error);
-            res.status(500).json(Response.error(error.message));
-        }
-    }
-
-    /**
-     * 创建新活动
-     * @param {Object} req 请求对象
-     * @param {Object} res 响应对象
+     * 创建活动（管理员）
      */
     async createActivity(req, res) {
         try {
-            const activityData = {
-                ...req.body,
-                created_by: req.user.id
-            };
-            const activity = await activityService.createActivity(activityData);
-            res.json(Response.success(activity, '创建活动成功'));
+            const activity = await activityService.createActivity(req.body);
+            res.status(201).json(Response.success(activity, '创建活动成功'));
         } catch (error) {
-            logger.error('创建活动错误:', error);
-            if (error.name === 'ValidationError') {
-                res.status(400).json(Response.badRequest(error.message));
-            } else {
-                res.status(500).json(Response.error(error.message));
-            }
+            logger.error('创建活动失败:', {
+                error: error.message,
+                stack: error.stack,
+                data: req.body
+            });
+            res.status(400).json(Response.badRequest(error.message || '创建活动失败'));
         }
     }
 
     /**
-     * 更新活动信息
-     * @param {Object} req 请求对象
-     * @param {Object} res 响应对象
+     * 更新活动（管理员）
      */
     async updateActivity(req, res) {
         try {
-            const { id } = req.params;
-            const result = await activityService.updateActivity(id, req.body);
-            if (!result) {
-                return res.status(404).json(Response.notFound('活动不存在'));
-            }
-            res.json(Response.success(result, '更新活动成功'));
+            const activity = await activityService.updateActivity(req.params.id, req.body);
+            res.json(Response.success(activity, '更新活动成功'));
         } catch (error) {
-            logger.error('更新活动错误:', error);
-            if (error.name === 'ValidationError') {
-                res.status(400).json(Response.badRequest(error.message));
+            logger.error('更新活动失败:', {
+                error: error.message,
+                stack: error.stack,
+                activityId: req.params.id,
+                data: req.body
+            });
+
+            if (error.message === '活动不存在') {
+                res.status(404).json(Response.notFound(error.message));
             } else {
-                res.status(500).json(Response.error(error.message));
+                res.status(400).json(Response.badRequest(error.message || '更新活动失败'));
             }
         }
     }
 
     /**
-     * 更新活动状态
-     * @param {Object} req 请求对象
-     * @param {Object} res 响应对象
+     * 更新活动状态（管理员）
      */
     async updateActivityStatus(req, res) {
         try {
-            const { id } = req.params;
             const { status } = req.body;
-            
             if (!status) {
                 return res.status(400).json(Response.badRequest('状态不能为空'));
             }
 
-            const activity = await activityService.updateActivityStatus(id, status);
+            const activity = await activityService.updateActivityStatus(req.params.id, status);
             if (!activity) {
                 return res.status(404).json(Response.notFound('活动不存在'));
             }
             res.json(Response.success(activity, '更新活动状态成功'));
         } catch (error) {
-            logger.error('更新活动状态错误:', error);
-            res.status(500).json(Response.error(error.message));
+            logger.error('更新活动状态失败:', {
+                error: error.message,
+                stack: error.stack,
+                activityId: req.params.id,
+                status: req.body.status
+            });
+            res.status(400).json(Response.badRequest(error.message || '更新活动状态失败'));
         }
     }
 
     /**
-     * 删除活动
-     * @param {Object} req 请求对象
-     * @param {Object} res 响应对象
+     * 删除活动（管理员）
      */
     async deleteActivity(req, res) {
         try {
-            const { id } = req.params;
-            const result = await activityService.deleteActivity(id);
-            if (!result) {
-                return res.status(404).json(Response.notFound('活动不存在'));
-            }
+            await activityService.deleteActivity(req.params.id);
             res.json(Response.success(null, '删除活动成功'));
         } catch (error) {
-            logger.error('删除活动错误:', error);
-            res.status(500).json(Response.error(error.message));
+            logger.error('删除活动失败:', {
+                error: error.message,
+                stack: error.stack,
+                activityId: req.params.id
+            });
+
+            if (error.message === '活动不存在') {
+                res.status(404).json(Response.notFound(error.message));
+            } else {
+                res.status(500).json(Response.error('删除活动失败'));
+            }
         }
     }
 }

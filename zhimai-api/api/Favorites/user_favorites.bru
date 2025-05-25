@@ -1,0 +1,15 @@
+meta {
+  name: 获取我的收藏列表
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{host}}/api/activities/user/favorites
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{user_token}}
+}

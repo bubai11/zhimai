@@ -24,7 +24,9 @@
     "node-cron": "^3.0.3",
     "redis": "^4.6.13",
     "sequelize": "^6.36.0",
-    "winston": "^3.17.0"
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0",
+    "xss": "^1.0.15"
   },
   "devDependencies": {
     "eslint": "^8.56.0",

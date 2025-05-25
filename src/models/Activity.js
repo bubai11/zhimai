@@ -60,19 +60,26 @@ const Activity = sequelize.define('Activity', {
         comment: '活动链接'
     },
     status: {
-        type: DataTypes.STRING(20),
+        type: DataTypes.ENUM('未开始', '进行中', '已结束'),
         defaultValue: '未开始',
-        comment: '活动状态（进行中/已结束/已取消等）'
+        comment: '活动状态'
     },
     max_participants: {
         type: DataTypes.INTEGER,
         comment: '最大参与人数，NULL表示不限'
+    },
+    deleted_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        comment: '软删除时间'
     }
 }, {
     tableName: 'activities',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
+    deletedAt: 'deleted_at',
+    paranoid: true,
     indexes: [
         {
             name: 'idx_activity_type',
