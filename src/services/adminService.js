@@ -329,15 +329,15 @@ class AdminService {
 
     /**
      * 生成并保存管理员token
-     * @param {Admin} admin 管理员对象
+     * @param {Object} admin 管理员对象
      * @param {Object} options 选项（userAgent, ipAddress）
-     * @returns {Promise<string>} token
+     * @returns {Promise<string>} JWT token
      */
     async generateAndSaveToken(admin, options = {}) {
         try {
-            // 生成token
+            // 生成JWT token
             const token = jwt.sign(
-                { 
+                {
                     id: admin.id,
                     role: admin.role,
                     email: admin.email,
@@ -347,8 +347,9 @@ class AdminService {
                 { expiresIn: config.JWT_EXPIRES_IN_ADMIN }
             );
 
-            // 计算过期时间
-            const expiresAt = new Date(Date.now() + config.JWT_EXPIRES_IN_ADMIN * 1000);
+            // 解析JWT获取过期时间
+            const decoded = jwt.decode(token);
+            const expiresAt = new Date(decoded.exp * 1000); // 转换为毫秒
 
             // 删除该管理员的所有旧token
             await AdminToken.destroy({
@@ -366,7 +367,6 @@ class AdminService {
             });
 
             logger.info('管理员token生成成功:', { adminId: admin.id });
-            logger.info('获取到的user-agent:', {userAgent: options.userAgent });
             return token;
         } catch (error) {
             logger.error('生成管理员token失败:', error);

@@ -1,0 +1,15 @@
+meta {
+  name: 获取当前用户基本信息
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{host}}/api/user/current
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{user_token}}
+}

@@ -1,5 +1,5 @@
 // src/models/index.js
-const { User } = require('./User');
+const User = require('./User');
 const { Activity } = require('./Activity');
 const { ActivityParticipant } = require('./ActivityParticipant');
 const Admin = require('./admin');

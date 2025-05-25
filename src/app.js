@@ -6,6 +6,7 @@ const userService = require('./services/userService');
 const scheduler = require('./utils/scheduler');
 const logger = require('./utils/logger');
 const requestLogger = require('./middleware/requestLogger');
+const createRateLimiter = require('./middleware/rateLimiter');
 
 const activityRoutes = require('./routes/activityRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -44,10 +45,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 
+// 添加限流中间件
+app.use(createRateLimiter({
+    maxRequests: 100,  // 每分钟最多 100 次请求
+    windowMs: 60000    // 1 分钟时间窗口
+}));
+
 // 路由
 app.use('/api/user', userRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/activity', activityRoutes);
+// app.use('/api/activity', activityRoutes);
 
 // 测试路由
 app.get('/hello', (req, res) => {
@@ -169,6 +176,16 @@ initializeDatabase().then((dbSuccess) => {
             }
         });
     }
+});
+
+// 错误处理中间件
+app.use((err, req, res, next) => {
+    logger.error('应用错误:', err);
+    res.status(500).json({
+        code: 500,
+        message: '服务器内部错误',
+        data: null
+    });
 });
 
 module.exports = app;

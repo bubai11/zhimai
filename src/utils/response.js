@@ -1,11 +1,11 @@
 // utils/response.js
 
 /**
- * 统一API响应格式
+ * 统一API响应格式工具类
  */
 class Response {
     /**
-     * 成功响应
+     * 生成成功响应对象
      * @param {*} data 响应数据
      * @param {string} message 响应消息
      * @returns {Object} 响应对象
@@ -19,7 +19,7 @@ class Response {
     }
 
     /**
-     * 错误响应
+     * 生成错误响应对象
      * @param {string} message 错误消息
      * @param {number} code 错误代码
      * @param {*} data 错误数据
@@ -34,7 +34,7 @@ class Response {
     }
 
     /**
-     * 参数错误响应
+     * 生成参数错误响应对象
      * @param {string} message 错误消息
      * @returns {Object} 响应对象
      */
@@ -43,7 +43,7 @@ class Response {
     }
 
     /**
-     * 未授权响应
+     * 生成未授权响应对象
      * @param {string} message 错误消息
      * @returns {Object} 响应对象
      */
@@ -52,7 +52,7 @@ class Response {
     }
 
     /**
-     * 禁止访问响应
+     * 生成禁止访问响应对象
      * @param {string} message 错误消息
      * @returns {Object} 响应对象
      */
@@ -61,7 +61,7 @@ class Response {
     }
 
     /**
-     * 资源不存在响应
+     * 生成资源不存在响应对象
      * @param {string} message 错误消息
      * @returns {Object} 响应对象
      */

@@ -1,0 +1,20 @@
+meta {
+  name: 微信登录
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{host}}/api/user/wx-login
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "code": "test_code_1", 
+    "nickname": "测试用户",
+    "avatarUrl": "https://example.com/avatar.jpg"
+    
+  }
+}

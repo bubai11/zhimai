@@ -5,8 +5,13 @@ meta {
 }
 
 post {
-  url: {{baseUrl}}/api/activities/list
+  url: {{host}}/api/activities/list
   body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
 }
 
 body:json {
@@ -22,10 +27,6 @@ body:json {
 
 vars:pre-request {
   timestamp: Math.floor(Date.now() / 1000).toString()
-}
-
-headers {
-  Content-Type: application/json
 }
 
 script:pre-request {
@@ -63,4 +64,4 @@ tests {
     expect(response.body.data).to.have.property('total');
     expect(response.body.data).to.have.property('activities');
   });
-} 
+}

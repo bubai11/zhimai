@@ -41,3 +41,5 @@ coverage/
 
 # Old cloud hosting configuration
 container.config.json 
+# SpecStory explanation file
+.specstory/.what-is-this.md

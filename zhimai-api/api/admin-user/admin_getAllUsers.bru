@@ -1,0 +1,56 @@
+meta {
+  name: 管理员获取所有用户
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{host}}/api/user/users
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+docs {
+  // 返回所有用户的简单列表，适合小型数据集
+  const response = {
+      code: 200,
+      message: "success",
+      data: [
+          {
+              id: 1,
+              nickname: "用户A",
+              email: "us***@example.com",
+              role: "user",
+              status: "active",
+              createdAt: "2024-04-25T07:03:50.196Z"
+          },
+          // ... 所有用户
+      ]
+  }
+  
+  // 前端使用示例
+  const getAllUsers = async () => {
+      try {
+          const response = await wx.request({
+              url: 'http://localhost:3000/api/user/users',
+              method: 'GET',
+              header: {
+                  'Authorization': `Bearer ${adminToken}`
+              }
+          });
+          
+          if (response.data.code === 200) {
+              // 直接使用用户列表
+              const users = response.data.data;
+              // 例如：显示在表格中
+              this.setData({ userList: users });
+          }
+      } catch (error) {
+          console.error('获取用户列表失败:', error);
+      }
+  }
+}

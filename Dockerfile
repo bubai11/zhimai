@@ -13,14 +13,12 @@ RUN npm install --production
 COPY . .
 
 # 设置环境变量
-ENV NODE_ENV=production
-ENV PORT=80
+ENV NODE_ENV=development
+ENV PORT=3000
 
-# 暴露端口
-EXPOSE 80
+EXPOSE 3000
 
-# # 启动命令
-# CMD ["npm", "start"] 
+CMD ["npm", "run", "dev"]
 
 # FROM node:18-alpine
 

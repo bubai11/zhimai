@@ -1,0 +1,44 @@
+meta {
+  name: 管理员根据id查询用户
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{host}}/api/user/users/:id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  id: 9
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+docs {
+  {
+    "code": 200,
+    "message": "获取用户信息成功",
+    "data": {
+      "id": 9,
+      "nickname": "🥶🥶",
+      "email": "us***er@example.com",
+      "phone": "138****8000",
+      "avatar_url": "http://tmp/onADWrF0gC6dcbbbcb7f88b5a651551a9eddafc447b6.jpeg",
+      "role": "user",
+      "status": "active",
+      "createdAt": "2025-04-23T13:26:55.000Z",
+      "updatedAt": "2025-04-27T15:10:22.000Z",
+      "campus": "广金",
+      "grade": "2022",
+      "major": "计算机科学与技术",
+      "statistics": {
+        "activityCount": 0,
+        "favoriteCount": 0
+      }
+    }
+  }
+}
