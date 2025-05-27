@@ -88,10 +88,10 @@ class ActivityController {
 
             if (error.message === '活动不存在') {
                 res.status(404).json(Response.notFound(error.message));
-            } else if (error.message === '已经收藏过该活动') {
+            } else if (error.message === '该活动已在您的收藏列表中') {
                 res.status(400).json(Response.badRequest(error.message));
             } else {
-                res.status(500).json(Response.error('收藏活动失败'));
+                res.status(500).json(Response.error('收藏活动失败，请稍后重试'));
             }
         }
     }

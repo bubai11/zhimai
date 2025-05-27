@@ -217,16 +217,22 @@ class ActivityService {
                 throw new Error('活动不存在');
             }
 
-            // 检查是否已收藏
+            // 检查是否已收藏（包括软删除的记录）
             const existingFavorite = await Favorite.findOne({
                 where: {
                     activity_id: activityId,
                     user_id: userId
-                }
+                },
+                paranoid: false // 包括软删除的记录
             });
 
             if (existingFavorite) {
-                throw new Error('已经收藏过该活动');
+                if (existingFavorite.deleted_at) {
+                    // 如果是已删除的记录，恢复它
+                    await existingFavorite.restore();
+                    return existingFavorite;
+                }
+                throw new Error('该活动已在您的收藏列表中');
             }
 
             // 创建收藏记录

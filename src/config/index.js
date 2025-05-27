@@ -20,6 +20,9 @@ const wechatConfig = {
 // 默认使用一个固定的开发环境密钥，确保开发时token不会因为重启服务而失效
 const DEV_JWT_SECRET = 'campus-service-dev-secret-key-2024';
 
+const database = require('./database');
+const email = require('./email');
+
 module.exports = {
     // JWT配置
     JWT_SECRET: process.env.JWT_SECRET || DEV_JWT_SECRET,
@@ -40,5 +43,7 @@ module.exports = {
     // 环境配置
     NODE_ENV: process.env.NODE_ENV || 'development',
     PORT: process.env.PORT || 3000,
-    ...wechatConfig
+    ...wechatConfig,
+    database,
+    email
 }; 

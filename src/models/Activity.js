@@ -66,6 +66,7 @@ const Activity = sequelize.define('Activity', {
     },
     max_participants: {
         type: DataTypes.INTEGER,
+        allowNull: true,
         comment: '最大参与人数，NULL表示不限'
     },
     deleted_at: {
