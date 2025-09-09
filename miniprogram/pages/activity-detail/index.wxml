@@ -1,0 +1,10 @@
+<view class="action-buttons">
+    <button class="btn-favorite" bindtap="toggleFavorite">
+        <text class="iconfont {{isFavorite ? 'icon-heart-filled' : 'icon-heart'}}"></text>
+        <text>{{isFavorite ? '已收藏' : '收藏'}}</text>
+    </button>
+    <button class="btn-remind" bindtap="navigateToSetReminder">
+        <text class="iconfont icon-clock"></text>
+        <text>设置提醒</text>
+    </button>
+</view> 

@@ -6,6 +6,7 @@ const { verifyAdminToken, checkAdminRole } = require('../middleware/adminAuthMid
 
 // 公开接口
 router.get('/', activityController.getActivities);  // 获取活动列表
+router.get('/categories', activityController.getActivityCategories);  // 获取活动分类
 router.get('/:id', activityController.getActivityById);  // 获取活动详情
 
 // 用户接口（需要用户token认证）

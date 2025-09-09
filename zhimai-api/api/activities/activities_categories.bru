@@ -1,0 +1,11 @@
+meta {
+  name: 获取活动目录
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{host}}/api/activities/categories
+  body: none
+  auth: inherit
+}

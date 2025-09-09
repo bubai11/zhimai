@@ -1,0 +1,24 @@
+<view class="container">
+    <view class="reminder-list">
+        <block wx:if="{{reminders.length > 0}}">
+            <view class="reminder-item" wx:for="{{reminders}}" wx:key="reminder_id">
+                <view class="activity-info">
+                    <text class="activity-title">{{item.activity.title}}</text>
+                    <text class="activity-time">活动时间：{{item.activity.start_time}}</text>
+                    <text class="activity-location">地点：{{item.activity.location}}</text>
+                </view>
+                <view class="reminder-info">
+                    <text class="reminder-title">{{item.title}}</text>
+                    <text class="reminder-time">提醒时间：{{item.remind_start_time}}</text>
+                </view>
+                <view class="actions">
+                    <button class="btn-delete" data-id="{{item.reminder_id}}" bindtap="handleDelete">删除提醒</button>
+                </view>
+            </view>
+        </block>
+        <view class="empty-state" wx:else>
+            <text>暂无提醒</text>
+            <text class="tip">可以在活动详情页设置提醒哦~</text>
+        </view>
+    </view>
+</view> 

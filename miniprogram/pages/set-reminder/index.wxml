@@ -1,0 +1,57 @@
+<view class="container">
+    <view class="reminder-form">
+        <view class="form-title">设置提醒</view>
+        
+        <!-- 活动信息 -->
+        <view class="activity-info">
+            <view class="activity-title">{{activity.title}}</view>
+            <view class="activity-time">开始时间：{{activity.start_time}}</view>
+            <view class="activity-location" wx:if="{{activity.location}}">地点：{{activity.location}}</view>
+        </view>
+
+        <!-- 提醒类型选择 -->
+        <view class="form-item">
+            <view class="form-label">提醒类型</view>
+            <radio-group class="reminder-type-group" bindchange="onReminderTypeChange">
+                <label class="reminder-type-item" wx:for="{{reminderTypes}}" wx:key="value">
+                    <radio value="{{item.value}}" checked="{{reminderType === item.value}}" />
+                    <text>{{item.label}}</text>
+                </label>
+            </radio-group>
+        </view>
+
+        <!-- 提醒时间设置 -->
+        <view class="form-item">
+            <view class="form-label">提醒时间</view>
+            <view class="time-picker-group">
+                <picker mode="date" value="{{reminderDate}}" bindchange="onDateChange">
+                    <view class="picker">{{reminderDate || '选择日期'}}</view>
+                </picker>
+                <picker mode="time" value="{{reminderTime}}" bindchange="onTimeChange">
+                    <view class="picker">{{reminderTime || '选择时间'}}</view>
+                </picker>
+            </view>
+        </view>
+
+        <!-- 签到结束时间（仅签到提醒） -->
+        <view class="form-item" wx:if="{{reminderType === 'checkin'}}">
+            <view class="form-label">签到结束时间</view>
+            <picker mode="time" value="{{checkinEndTime}}" bindchange="onCheckinEndTimeChange">
+                <view class="picker">{{checkinEndTime || '选择时间'}}</view>
+            </picker>
+        </view>
+
+        <!-- 自定义提醒标题（仅自定义提醒） -->
+        <view class="form-item" wx:if="{{reminderType === 'custom'}}">
+            <view class="form-label">提醒标题</view>
+            <input class="custom-title-input" 
+                   type="text" 
+                   placeholder="请输入提醒标题" 
+                   value="{{customTitle}}"
+                   bindinput="onCustomTitleInput" />
+        </view>
+
+        <!-- 提交按钮 -->
+        <button class="submit-btn" type="primary" bindtap="saveReminder">保存提醒</button>
+    </view>
+</view> 

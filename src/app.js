@@ -11,6 +11,7 @@ const createRateLimiter = require('./middleware/rateLimiter');
 const activityRoutes = require('./routes/activityRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const userRoutes = require('./routes/userRoutes');
+const reminderRoutes = require('./routes/reminderRoutes');
 
 const app = express();
 
@@ -53,8 +54,10 @@ app.use(createRateLimiter({
 
 // 路由
 app.use('/api/user', userRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/admin', adminRoutes); 
 app.use('/api/activities', activityRoutes);
+app.use('/api/reminders', reminderRoutes);
+
 
 // 测试路由
 app.get('/hello', (req, res) => {
@@ -125,58 +128,8 @@ process.on('SIGINT', () => {
     process.exit(0);
 });
 
-// 启动服务器
+// 端口配置
 const PORT = process.env.PORT || 3000;
-
-// 先初始化数据库，然后再启动服务器
-initializeDatabase().then((dbSuccess) => {
-    if (dbSuccess || process.env.NODE_ENV !== 'production') {
-        const server = app.listen(PORT, '0.0.0.0', () => {
-            const address = server.address();
-            const networkInterfaces = require('os').networkInterfaces();
-            const addresses = [];
-            
-            console.log('网络环境检测:');
-            console.log('----------------------------------------');
-            
-            Object.keys(networkInterfaces).forEach(interfaceName => {
-                console.log(`\n接口 ${interfaceName}:`);
-                networkInterfaces[interfaceName].forEach(interface => {
-                    if (interface.family === 'IPv4') {
-                        console.log(`  - IP地址: ${interface.address}`);
-                        console.log(`  - 子网掩码: ${interface.netmask}`);
-                        console.log(`  - 内部地址: ${interface.internal ? '是' : '否'}`);
-                        if (!interface.internal) {
-                            addresses.push(interface.address);
-                        }
-                    }
-                });
-            });
-
-            console.log('\n----------------------------------------');
-            console.log('服务器启动成功:');
-            console.log(`- 端口: ${address.port}`);
-            console.log(`- 监听地址: ${address.address}`);
-            console.log(`- 协议类型: ${address.family}`);
-            console.log('\n可访问地址:');
-            console.log(`- 本地访问: http://localhost:${PORT}`);
-            addresses.forEach(ip => {
-                console.log(`- 局域网访问: http://${ip}:${PORT}`);
-            });
-            console.log('\n注意事项:');
-            console.log('1. 如果使用校园网，设备间可能被隔离，建议使用手机热点');
-            console.log('2. 确保手机和电脑在同一网络环境下');
-            console.log('3. 如果无法访问，可以尝试使用内网穿透工具');
-        });
-
-        server.on('error', (error) => {
-            console.error('服务器错误:', error);
-            if (error.code === 'EADDRINUSE') {
-                console.error(`端口 ${PORT} 已被占用`);
-            }
-        });
-    }
-});
 
 // 错误处理中间件
 app.use((err, req, res, next) => {
@@ -187,5 +140,48 @@ app.use((err, req, res, next) => {
         data: null
     });
 });
+
+// 全局异常处理
+process.on('uncaughtException', (error) => {
+    console.error('未捕获的异常:', error);
+    logger.error('未捕获的异常:', error);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('未处理的Promise拒绝:', reason);
+    logger.error('未处理的Promise拒绝:', reason);
+    process.exit(1);
+});
+
+// 启动服务器（仅在直接运行时）
+if (require.main === module) {
+    console.log('开始启动服务器...');
+    
+    // 先初始化数据库，然后再启动服务器
+    initializeDatabase().then((dbSuccess) => {
+        console.log('数据库初始化结果:', dbSuccess);
+        
+        if (dbSuccess || process.env.NODE_ENV !== 'production') {
+            console.log('开始启动HTTP服务器...');
+            const server = app.listen(PORT, '0.0.0.0', () => {
+                console.log(`服务器运行在端口 ${PORT}`);
+                logger.info(`服务器启动成功，端口: ${PORT}`);
+            });
+            
+            server.on('error', (error) => {
+                console.error('服务器错误:', error);
+                logger.error('服务器错误:', error);
+            });
+        } else {
+            console.error('数据库连接失败，无法启动服务器');
+            process.exit(1);
+        }
+    }).catch((error) => {
+        console.error('启动失败:', error);
+        logger.error('启动失败:', error);
+        process.exit(1);
+    });
+}
 
 module.exports = app;

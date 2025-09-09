@@ -634,7 +634,7 @@ class AdminService {
 
             const where = {};
             if (status) where.status = status;
-            if (type) where.type = type;
+            if (type) where.activity_type = type;  // 修复：使用正确的字段名
             if (keyword) {
                 where[Op.or] = [
                     { title: { [Op.like]: `%${keyword}%` } },
@@ -642,14 +642,14 @@ class AdminService {
                 ];
             }
             if (startDate && endDate) {
-                where.startTime = {
+                where.start_time = {  // 修复：使用正确的字段名
                     [Op.between]: [startDate, endDate]
                 };
             }
 
             const { rows: activities, count: total } = await Activity.findAndCountAll({
                 where,
-                order: [['createdAt', 'DESC']],
+                order: [['created_at', 'DESC']],  // 修复：使用正确的字段名
                 limit: parseInt(pageSize),
                 offset: (parseInt(page) - 1) * parseInt(pageSize)
             });

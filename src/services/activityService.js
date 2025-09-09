@@ -1,5 +1,6 @@
 const { Activity, User, Favorite } = require('../models');
 const { Op } = require('sequelize');
+const sequelize = require('../config/database');
 const logger = require('../utils/logger');
 const xss = require('xss');
 
@@ -12,30 +13,54 @@ class ActivityService {
     async getAllActivities(query = {}) {
         try {
             const { 
-                type, 
-                status, 
-                startDate, 
-                endDate, 
-                organizer,
-                keyword,
+                type,           // 活动类型 activity_type
+                status,         // 活动状态
+                startDate,      // 开始日期筛选
+                endDate,        // 结束日期筛选 
+                organizer,      // 主办方
+                keyword,        // 关键词搜索
+                creditType,     // 学分类型 credit_type
+                channel,        // 参与渠道 participation_channel
+                targetAudience, // 目标受众 target_audience
+                location,       // 地点搜索
+                sortBy = 'start_time',    // 排序字段
+                sortOrder = 'DESC',       // 排序方向
                 page = 1, 
                 pageSize = 10 
             } = query;
 
             const where = {};
 
+            // 基础筛选条件
             if (type) where.activity_type = type;
             if (status) where.status = status;
+            if (creditType) where.credit_type = creditType;
+            if (channel) where.participation_channel = channel;
+            if (targetAudience) where.target_audience = { [Op.like]: `%${targetAudience}%` };
+            
+            // 时间范围筛选
             if (startDate) where.start_time = { [Op.gte]: startDate };
             if (endDate) where.end_time = { [Op.lte]: endDate };
+            
+            // 模糊搜索条件
             if (organizer) where.organizer = { [Op.like]: `%${organizer}%` };
+            if (location) where.location = { [Op.like]: `%${location}%` };
+            
+            // 关键词搜索（标题、描述、主办方）
             if (keyword) {
                 where[Op.or] = [
                     { title: { [Op.like]: `%${keyword}%` } },
                     { description: { [Op.like]: `%${keyword}%` } },
-                    { organizer: { [Op.like]: `%${keyword}%` } }
+                    { organizer: { [Op.like]: `%${keyword}%` } },
+                    { location: { [Op.like]: `%${keyword}%` } }
                 ];
             }
+
+            // 排序配置
+            const validSortFields = ['start_time', 'end_time', 'created_at', 'title', 'status'];
+            const validSortOrders = ['ASC', 'DESC'];
+            const orderBy = validSortFields.includes(sortBy) ? sortBy : 'start_time';
+            const orderDir = validSortOrders.includes(sortOrder.toUpperCase()) ? sortOrder.toUpperCase() : 'DESC';
 
             // 自动更新活动状态
             await this.updateActivitiesStatus();
@@ -61,9 +86,9 @@ class ActivityService {
                     'created_at',
                     'updated_at'
                 ],
-                order: [['start_time', 'DESC']],
-                offset: (page - 1) * pageSize,
-                limit: pageSize
+                order: [[orderBy, orderDir]],
+                offset: (parseInt(page) - 1) * parseInt(pageSize),
+                limit: parseInt(pageSize)
             });
 
             // 获取每个活动的收藏数
@@ -475,6 +500,180 @@ class ActivityService {
 
         if (!validTransitions[currentStatus].includes(newStatus)) {
             throw new Error('非法的状态转换');
+        }
+    }
+
+    /**
+     * 获取活动统计信息
+     * @returns {Promise<Object>} 统计信息
+     */
+    async getActivityStatistics() {
+        try {
+            const [
+                totalCount,
+                statusStats,
+                typeStats,
+                creditTypeStats,
+                channelStats
+            ] = await Promise.all([
+                // 总活动数
+                Activity.count(),
+                
+                // 按状态统计
+                Activity.findAll({
+                    attributes: [
+                        'status',
+                        [sequelize.fn('COUNT', sequelize.col('activity_id')), 'count']
+                    ],
+                    group: ['status']
+                }),
+                
+                // 按活动类型统计
+                Activity.findAll({
+                    attributes: [
+                        'activity_type',
+                        [sequelize.fn('COUNT', sequelize.col('activity_id')), 'count']
+                    ],
+                    where: {
+                        activity_type: { [Op.ne]: null }
+                    },
+                    group: ['activity_type']
+                }),
+                
+                // 按学分类型统计
+                Activity.findAll({
+                    attributes: [
+                        'credit_type',
+                        [sequelize.fn('COUNT', sequelize.col('activity_id')), 'count']
+                    ],
+                    where: {
+                        credit_type: { [Op.ne]: null }
+                    },
+                    group: ['credit_type']
+                }),
+                
+                // 按参与渠道统计
+                Activity.findAll({
+                    attributes: [
+                        'participation_channel',
+                        [sequelize.fn('COUNT', sequelize.col('activity_id')), 'count']
+                    ],
+                    where: {
+                        participation_channel: { [Op.ne]: null }
+                    },
+                    group: ['participation_channel']
+                })
+            ]);
+
+            return {
+                total: totalCount,
+                byStatus: statusStats.map(item => ({
+                    status: item.status,
+                    count: parseInt(item.get('count'))
+                })),
+                byType: typeStats.map(item => ({
+                    type: item.activity_type,
+                    count: parseInt(item.get('count'))
+                })),
+                byCreditType: creditTypeStats.map(item => ({
+                    creditType: item.credit_type,
+                    count: parseInt(item.get('count'))
+                })),
+                byChannel: channelStats.map(item => ({
+                    channel: item.participation_channel,
+                    count: parseInt(item.get('count'))
+                }))
+            };
+        } catch (error) {
+            logger.error('获取活动统计失败:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 获取热门活动（按收藏数排序）
+     * @param {number} limit 限制数量
+     * @returns {Promise<Array>} 热门活动列表
+     */
+    async getPopularActivities(limit = 10) {
+        try {
+            const activities = await Activity.findAll({
+                attributes: [
+                    'activity_id',
+                    'title',
+                    'start_time',
+                    'end_time',
+                    'location',
+                    'organizer',
+                    'activity_type',
+                    'status',
+                    'image_url'
+                ],
+                include: [{
+                    model: Favorite,
+                    attributes: [],
+                    required: false
+                }],
+                group: ['Activity.activity_id'],
+                order: [
+                    [sequelize.fn('COUNT', sequelize.col('Favorites.favorite_id')), 'DESC'],
+                    ['start_time', 'DESC']
+                ],
+                limit: parseInt(limit),
+                subQuery: false
+            });
+
+            // 获取每个活动的收藏数
+            const activitiesWithStats = await Promise.all(activities.map(async (activity) => {
+                const favoriteCount = await Favorite.count({
+                    where: { activity_id: activity.activity_id }
+                });
+
+                return {
+                    ...activity.toJSON(),
+                    favoriteCount
+                };
+            }));
+
+            return activitiesWithStats;
+        } catch (error) {
+            logger.error('获取热门活动失败:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 获取活动分类信息
+     * @returns {Promise<Object>} 分类信息
+     */
+    async getActivityCategories() {
+        try {
+            const [activityTypes, creditTypes, channels] = await Promise.all([
+                Activity.findAll({
+                    attributes: ['activity_type'],
+                    where: { activity_type: { [Op.ne]: null } },
+                    group: ['activity_type']
+                }),
+                Activity.findAll({
+                    attributes: ['credit_type'],
+                    where: { credit_type: { [Op.ne]: null } },
+                    group: ['credit_type']
+                }),
+                Activity.findAll({
+                    attributes: ['participation_channel'],
+                    where: { participation_channel: { [Op.ne]: null } },
+                    group: ['participation_channel']
+                })
+            ]);
+
+            return {
+                activityTypes: activityTypes.map(item => item.activity_type).filter(Boolean),
+                creditTypes: creditTypes.map(item => item.credit_type).filter(Boolean),
+                channels: channels.map(item => item.participation_channel).filter(Boolean)
+            };
+        } catch (error) {
+            logger.error('获取活动分类失败:', error);
+            throw error;
         }
     }
 }

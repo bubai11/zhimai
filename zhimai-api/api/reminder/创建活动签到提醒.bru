@@ -1,0 +1,23 @@
+meta {
+  name: 创建活动签到提醒
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{host}}/api/reminders/activity/checkin
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{user_token}}
+}
+
+body:json {
+  {
+    "activity_id": 1,
+    "checkin_time": "2025-09-08T13:00:00.000Z",
+    "advance_minutes": 30
+  }
+}

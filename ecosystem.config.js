@@ -1,25 +1,35 @@
 module.exports = {
   apps: [
     {
-      name: 'zhihuiguangjin-api',
+      name: 'zhimai-api',
       script: 'src/app.js',
       instances: 1,
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',
+      error_file: './logs/api-error.log',
+      out_file: './logs/api-out.log',
+      log_file: './logs/api-combined.log',
+      time: true,
       env: {
-        NODE_ENV: 'development'
+        NODE_ENV: 'development',
+        PORT: 3000
       },
       env_production: {
-        NODE_ENV: 'production'
+        NODE_ENV: 'production',
+        PORT: 3000
       }
     },
     {
-      name: 'zhihuiguangjin-cron',
+      name: 'zhimai-scheduler',
       script: 'scripts/cronJobs.js',
       instances: 1,
       autorestart: true,
       watch: false,
+      error_file: './logs/scheduler-error.log',
+      out_file: './logs/scheduler-out.log',
+      log_file: './logs/scheduler-combined.log',
+      time: true,
       env: {
         NODE_ENV: 'development'
       },

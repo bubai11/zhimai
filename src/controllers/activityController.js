@@ -212,6 +212,56 @@ class ActivityController {
             }
         }
     }
+
+    /**
+     * 获取活动统计信息
+     */
+    async getActivityStatistics(req, res) {
+        try {
+            const statistics = await activityService.getActivityStatistics();
+            res.json(Response.success(statistics, '获取活动统计成功'));
+        } catch (error) {
+            logger.error('获取活动统计失败:', {
+                error: error.message,
+                stack: error.stack
+            });
+            res.status(500).json(Response.error('获取活动统计失败'));
+        }
+    }
+
+    /**
+     * 获取热门活动
+     */
+    async getPopularActivities(req, res) {
+        try {
+            const { limit = 10 } = req.query;
+            const activities = await activityService.getPopularActivities(limit);
+            res.json(Response.success(activities, '获取热门活动成功'));
+        } catch (error) {
+            logger.error('获取热门活动失败:', {
+                error: error.message,
+                stack: error.stack,
+                query: req.query
+            });
+            res.status(500).json(Response.error('获取热门活动失败'));
+        }
+    }
+
+    /**
+     * 获取活动分类信息
+     */
+    async getActivityCategories(req, res) {
+        try {
+            const categories = await activityService.getActivityCategories();
+            res.json(Response.success(categories, '获取活动分类成功'));
+        } catch (error) {
+            logger.error('获取活动分类失败:', {
+                error: error.message,
+                stack: error.stack
+            });
+            res.status(500).json(Response.error('获取活动分类失败'));
+        }
+    }
 }
 
 module.exports = new ActivityController();
