@@ -15,7 +15,9 @@ userRouter.use(verifyToken);
 
 userRouter.get('/favorites', activityController.getMyFavorites);  // 获取我的收藏列表
 userRouter.post('/:id/favorite', activityController.favoriteActivity);  // 收藏活动
-userRouter.delete('/:id/favorite', activityController.unfavoriteActivity);  // 取消收藏
+userRouter.delete('/:id/favorite', activityController.unfavoriteActivity);  // 取消收藏(该接口没用到,考虑移除)
+userRouter.post('/:id/deleteFavorites', activityController.deleteFavorites);//批量删除收藏
+userRouter.delete('/:id/clearFavorites', activityController.clearFavorites);  //全部清空收藏
 
 router.use('/user', userRouter);
 

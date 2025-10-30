@@ -130,7 +130,56 @@ class ActivityController {
             }
         }
     }
+    /**
+     * 批量删除收藏
+     */
+    async deleteFavorites(req, res) {
+        try {
+            const userId = req.user?.id;
+            if (!userId) {
+                return res.status(401).json(Response.unauthorized('请先登录'));
+            }
 
+            const activityIds = req.body.activity_id;
+            await activityService.deleteFavorites(activityIds, userId);
+            res.json(Response.success(null, '取消收藏成功'));
+        } catch (error) {
+            logger.error('取消收藏失败:', {
+                error: error.message,
+                stack: error.stack,
+                userId: req.user?.id,
+                activityId: req.params.id
+            });
+
+            if (error.message === '未找到该活动') {
+                res.status(404).json(Response.notFound(error.message));
+            } else {
+                res.status(500).json(Response.error('取消收藏失败'));
+            }
+        }
+    }
+    /**
+     * 清空收藏
+     */
+     async clearFavorites(req, res) {
+        try {
+            const userId = req.user?.id;
+            if (!userId) {
+                return res.status(401).json(Response.unauthorized('请先登录'));
+            }
+
+            await activityService.clearFavorites(userId);
+            res.json(Response.success(null, '已清空收藏'));
+        } catch (error) {
+            logger.error('清空收藏失败:', {
+                error: error.message,
+                stack: error.stack,
+                userId: req.user?.id,
+                activityId: req.params.id
+            });
+                res.status(500).json(Response.error('清空收藏失败'));
+        }
+     }
     /**
      * 创建活动（管理员）
      */
