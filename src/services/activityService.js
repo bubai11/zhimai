@@ -213,7 +213,7 @@ class ActivityService {
                     required: true,
                     attributes: ['favorite_id', 'created_at']
                 }],
-                order: [['start_time', 'DESC']]
+                order: [[{ model: Favorite }, 'created_at', 'DESC']]
             });
 
             return activities.map(activity => {
