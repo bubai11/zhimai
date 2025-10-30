@@ -185,9 +185,18 @@ class ActivityService {
      * @param {number} userId 用户ID
      * @returns {Promise<Array>} 活动列表
      */
-    async getMyFavorites(userId) {
-        try {
-            const activities = await Activity.findAll({
+    async getMyFavorites(reqMes) {
+    try {
+        const offset = (reqMes.page - 1) * reqMes.size;
+
+        // 先从 Favorite 表查询用户收藏，按 created_at 排序并分页
+        const favorites = await Favorite.findAll({
+            where: { user_id: reqMes.userId },
+            order: [['created_at', 'DESC']],
+            limit: reqMes.size,
+            offset: offset,
+            include: [{
+                model: Activity,
                 attributes: [
                     'activity_id',
                     'title',
@@ -206,28 +215,22 @@ class ActivityService {
                     'max_participants',
                     'created_at',
                     'updated_at'
-                ],
-                include: [{
-                    model: Favorite,
-                    where: { user_id: userId },
-                    required: true,
-                    attributes: ['favorite_id', 'created_at']
-                }],
-                order: [['start_time', 'DESC']]
-            });
+                ]
+            }]
+        });
+        return favorites.map(fav => {
+            const activityData = fav.Activity.toJSON();
+            return {
+                ...activityData,
+                favoriteTime: fav.created_at
+            };
+        });
 
-            return activities.map(activity => {
-                const activityData = activity.toJSON();
-                return {
-                    ...activityData,
-                    favoriteTime: activityData.Favorites[0].created_at
-                };
-            });
-        } catch (error) {
-            logger.error('获取用户收藏的活动列表失败:', error);
-            throw error;
-        }
+    } catch (error) {
+        logger.error('获取用户收藏的活动列表失败:', error);
+        throw error;
     }
+}
 
     /**
      * 收藏活动
@@ -299,7 +302,72 @@ class ActivityService {
             throw error;
         }
     }
+    /**
+     * 批量取消收藏活动
+     * @param {number[]} activityId 活动ID
+     * @param {number} userId 用户ID
+     * @returns {Promise<boolean>} 是否成功
+     */
+    async deleteFavorites(activityIds, userId) {
+        try {
+            if (!Array.isArray(activityIds) || activityIds.length === 0) {
+                throw new Error('删除列表为空');
+            }
 
+            // 批量查询这些收藏记录
+            const favorites = await Favorite.findAll({
+                where: {
+                    activity_id: activityIds,
+                    user_id: userId
+                }
+            });
+
+            if (favorites.length === 0) {
+                throw new Error('未找到该活动');
+            }
+            // 批量删除
+            await Favorite.destroy({
+                where: {
+                    activity_id: activityIds,
+                    user_id: userId
+                }
+            });
+            return {
+                successCount: favorites.length,
+                failCount: activityIds.length - favorites.length
+            };
+        } catch (error) {
+            logger.error('批量取消收藏活动失败:', error);
+            throw error;
+        }
+    }
+    /**
+     * 清空用户所有收藏
+     * @param {number} userId 用户ID
+     * @returns {Promise<number>} 删除的收藏数量
+     */
+    async clearFavorites(userId) {
+        try {
+            // 统计要删除的数量
+            const count = await Favorite.count({
+                where: { user_id: userId }
+            });
+
+            if (count === 0) {
+                return 0; // 没有可删除的记录
+            }
+
+            // 一次性删除当前用户所有收藏
+            await Favorite.destroy({
+                where: { user_id: userId }
+            });
+
+            return count;
+        } catch (error) {
+            logger.error('清空用户收藏失败:', error);
+            throw error;
+        }
+    }
     /**
      * 创建活动
      * @param {Object} activityData 活动数据
