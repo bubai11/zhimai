@@ -185,9 +185,18 @@ class ActivityService {
      * @param {number} userId 用户ID
      * @returns {Promise<Array>} 活动列表
      */
-    async getMyFavorites(userId) {
-        try {
-            const activities = await Activity.findAll({
+    async getMyFavorites(reqMes) {
+    try {
+        const offset = (reqMes.page - 1) * reqMes.size;
+        
+        // 先从 Favorite 表查询用户收藏，按 created_at 排序并分页
+        const favorites = await Favorite.findAll({
+            where: { user_id: reqMes.userId },
+            order: [['created_at', 'DESC']],
+            limit: reqMes.size,
+            offset: offset,
+            include: [{
+                model: Activity,
                 attributes: [
                     'activity_id',
                     'title',
@@ -206,28 +215,22 @@ class ActivityService {
                     'max_participants',
                     'created_at',
                     'updated_at'
-                ],
-                include: [{
-                    model: Favorite,
-                    where: { user_id: userId },
-                    required: true,
-                    attributes: ['favorite_id', 'created_at']
-                }],
-                order: [[{ model: Favorite }, 'created_at', 'DESC']]
-            });
+                ]
+            }]
+        });
+        return favorites.map(fav => {
+            const activityData = fav.Activity.toJSON();
+            return {
+                ...activityData,
+                favoriteTime: fav.created_at
+            };
+        });
 
-            return activities.map(activity => {
-                const activityData = activity.toJSON();
-                return {
-                    ...activityData,
-                    favoriteTime: activityData.Favorites[0].created_at
-                };
-            });
-        } catch (error) {
-            logger.error('获取用户收藏的活动列表失败:', error);
-            throw error;
-        }
+    } catch (error) {
+        logger.error('获取用户收藏的活动列表失败:', error);
+        throw error;
     }
+}
 
     /**
      * 收藏活动

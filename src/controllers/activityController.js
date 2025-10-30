@@ -53,7 +53,13 @@ class ActivityController {
                 return res.status(401).json(Response.unauthorized('请先登录'));
             }
 
-            const activities = await activityService.getMyFavorites(userId);
+
+            const reqMes={
+                userId,
+                page: parseInt(req.query.page) || 1,
+                size: parseInt(req.query.size) || 1,
+            }
+            const activities = await activityService.getMyFavorites(reqMes);
             res.json(Response.success(activities, '获取我的收藏列表成功'));
         } catch (error) {
             logger.error('获取我的收藏列表失败:', {
