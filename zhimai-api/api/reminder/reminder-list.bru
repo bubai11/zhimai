@@ -5,7 +5,11 @@ meta {
 }
 
 get {
-  url: {host}}/api/reminders
+  url: {{host}}/api/reminders
   body: none
   auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{user_token}}
 }

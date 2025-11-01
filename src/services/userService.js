@@ -1,7 +1,7 @@
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
-const { User, Activity, Favorite } = require('../models');
+const { User, Favorite } = require('../models');
 const logger = require('../utils/logger');
 const config = require('../config');
 const RedisService = require('../config/redis');
@@ -149,13 +149,12 @@ class UserService {
      */
     async getUserStatistics(userId) {
         try {
-            const [activityCount, favoriteCount] = await Promise.all([
-                Activity.count({ where: { user_id: userId } }),
-                Favorite.count({ where: { user_id: userId } })
-            ]);
+            // 只统计用户收藏的活动数量
+            // activities表没有user_id字段，只有favorites表有user_id
+            const favoriteCount = await Favorite.count({ where: { user_id: userId } });
 
             return {
-                activityCount,
+                activityCount: 0, // activities表不关联用户，所以为0
                 favoriteCount
             };
         } catch (error) {

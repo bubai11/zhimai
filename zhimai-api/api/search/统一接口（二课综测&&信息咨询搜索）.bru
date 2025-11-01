@@ -1,0 +1,78 @@
+meta {
+  name: 统一接口（二课综测&&信息咨询搜索）
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{host}}/api/search?keyword=经济贸易学院
+  body: none
+  auth: inherit
+}
+
+params:query {
+  keyword: 经济贸易学院
+}
+
+docs {
+  ### 1. 统一搜索接口（推荐）
+  
+  **路径**: `GET /api/search`
+  
+  **功能**: 支持活动和通知的综合搜索，可指定搜索类型
+  
+  **参数**:
+  | 参数 | 类型 | 必填 | 说明 | 示例 |
+  |------|------|------|------|------|
+  | `keyword` | string | 是 | 搜索关键词 | `讲座` |
+  | `type` | string | 否 | 搜索类型：`all`(全部)、`activity`(活动)、`notice`(通知) | `all` |
+  | `page` | number | 否 | 页码，默认1 | `1` |
+  | `pageSize` | number | 否 | 每页数量，默认10 | `10` |
+  | `sortBy` | string | 否 | 排序字段：`relevance`(相关性)、`time`(时间) | `relevance` |
+  | `sortOrder` | string | 否 | 排序方向：`ASC`、`DESC` | `DESC` |
+  
+  **响应示例**:
+  ```json
+  {
+    "code": 0,
+    "message": "搜索成功",
+    "data": {
+      "activities": {
+        "count": 5,
+        "rows": [
+          {
+            "activity_id": 1,
+            "title": "创新创业讲座",
+            "start_time": "2024-03-15T14:00:00.000Z",
+            "end_time": "2024-03-15T16:00:00.000Z",
+            "location": "学术报告厅",
+            "organizer": "创新创业学院",
+            "activity_type": "讲座",
+            "credit_type": "创新创业",
+            "status": "未开始"
+          }
+        ]
+      },
+      "notices": {
+        "count": 3,
+        "rows": [
+          {
+            "notice_id": 1,
+            "title": "关于举办创新创业讲座的通知",
+            "publish_time": "2024-03-10T09:00:00.000Z",
+            "content": "为提升学生创新创业能力...",
+            "publisher": "创新创业学院",
+            "campus": "主校区",
+            "notice_type": "学术活动"
+          }
+        ]
+      },
+      "total": 8,
+      "page": 1,
+      "pageSize": 10,
+      "keyword": "讲座"
+    }
+  }
+  ```
+  
+}

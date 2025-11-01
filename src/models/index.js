@@ -5,6 +5,7 @@ const { Favorite } = require('./Favorite');
 const Admin = require('./admin');
 const AdminToken = require('./adminToken');
 const Reminder = require('./Reminder');
+const Notice = require('./Notice');
 // const SystemLog = require('./SystemLog');
 
 // 活动和收藏的关联
@@ -69,5 +70,6 @@ module.exports = {
     Favorite,
     Admin,
     AdminToken,
-    Reminder
+    Reminder,
+    Notice
 };

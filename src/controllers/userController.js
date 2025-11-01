@@ -175,7 +175,8 @@ class UserController {
 
             logger.info('获取用户信息:', { userId });
 
-            const userInfo = await userService.getUserInfo(userId);
+            // 使用getUserProfile方法获取用户信息
+            const userInfo = await userService.getUserProfile(userId);
             if (!userInfo) {
                 logger.warn('获取用户信息失败: 用户不存在', { userId });
                 return res.status(404).json(Response.notFound('用户不存在'));
@@ -202,14 +203,16 @@ class UserController {
         try {
             const userId = req.user.id;
             const updateData = req.body;
-            const result = await userService.updateUserInfo(userId, updateData);
+            
+            // 使用updateUserProfile方法更新用户信息
+            const result = await userService.updateUserProfile(userId, updateData);
             res.json(Response.success(result, '更新用户信息成功'));
         } catch (error) {
             logger.error('更新用户信息失败', { error: error.message });
             if (error.message === '用户不存在') {
                 res.status(404).json(Response.notFound(error.message));
             } else {
-                res.status(500).json(Response.error('更新用户信息失败'));
+                res.status(500).json(Response.error(error.message || '更新用户信息失败'));
             }
         }
     }

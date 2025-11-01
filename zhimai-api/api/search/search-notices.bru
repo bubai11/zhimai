@@ -1,0 +1,21 @@
+meta {
+  name: 单独搜索通知接口
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{host}}/api/search/notices?keyword=讲座
+  body: none
+  auth: inherit
+}
+
+params:query {
+  keyword: 讲座
+}
+
+docs {
+  **功能**: 仅搜索通知信息
+  
+  **参数**: 与统一搜索接口相同，但只返回通知结果
+}

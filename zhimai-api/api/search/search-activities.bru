@@ -1,0 +1,22 @@
+meta {
+  name: 单独搜索活动接口
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{host}}/api/search/activities?keyword=讲座
+  body: none
+  auth: inherit
+}
+
+params:query {
+  keyword: 讲座
+}
+
+docs {
+  **功能**: 仅搜索活动（保持向后兼容）
+  
+  **参数**: 与统一搜索接口相同，但只返回活动结果
+  
+}

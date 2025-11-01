@@ -12,6 +12,8 @@ const activityRoutes = require('./routes/activityRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const userRoutes = require('./routes/userRoutes');
 const reminderRoutes = require('./routes/reminderRoutes');
+const searchRoutes = require('./routes/searchRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 const app = express();
 
@@ -46,6 +48,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 
+// 静态文件服务 - 提供头像访问
+app.use('/uploads', express.static('uploads'));
+app.use('/static', express.static('public'));
+
 // 添加限流中间件
 app.use(createRateLimiter({
     maxRequests: 100,  // 每分钟最多 100 次请求
@@ -57,6 +63,8 @@ app.use('/api/user', userRoutes);
 app.use('/api/admin', adminRoutes); 
 app.use('/api/activities', activityRoutes);
 app.use('/api/reminders', reminderRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/upload', uploadRoutes);
 
 
 // 测试路由
